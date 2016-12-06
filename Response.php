@@ -460,7 +460,6 @@ class Response extends Message implements ResponseInterface
             $this->getStatusCode(),
             $this->getReasonPhrase()
         );
-        $output .= PHP_EOL;
         $output .= $this->headerToString();
         $output .= $this->getCookieHeader();
         $output .= PHP_EOL;

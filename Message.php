@@ -278,7 +278,7 @@ abstract class Message implements MessageInterface
             $result[] = sprintf('%s: %s',$headerName,$headerValue);
         }
 
-        return implode(PHP_EOL,$result);
+        return $result ? PHP_EOL.implode(PHP_EOL,$result) : '';
     }
 
     /**

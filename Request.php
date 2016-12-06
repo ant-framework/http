@@ -418,7 +418,6 @@ class Request extends Message implements RequestInterface
             if($buffer == ''){
                 continue;
             }
-
             //将Body头信息跟内容拆分
             list($header, $bufferBody) = explode("\r\n\r\n", $buffer, 2);
             $bufferBody = substr($bufferBody, 0, -2);
@@ -457,7 +456,7 @@ class Request extends Message implements RequestInterface
             throw new InvalidArgumentException('Parsed body value must be an array, an object, or null');
         }
 
-        return $this->changeAttribute('bodyParsed',$data);
+        return $this->changeAttribute('bodyParams',$data);
     }
 
     /**
@@ -581,7 +580,7 @@ class Request extends Message implements RequestInterface
      *
      * @return array
      */
-    public function getRequestBasePath()
+    public function getRequestRouteUri()
     {
         //获取请求资源的路径
         $requestScriptName = $this->getScriptName();
@@ -700,7 +699,6 @@ class Request extends Message implements RequestInterface
             $this->getProtocolVersion()
         );
 
-        $requestString .= PHP_EOL;
         $requestString .= $this->headerToString();
         $requestString .= PHP_EOL;
         $requestString .= PHP_EOL;

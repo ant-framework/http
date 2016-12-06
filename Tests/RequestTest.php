@@ -1,8 +1,8 @@
 <?php
 namespace Ant\Http\Test;
 
-use Ant\Http\Request;
 use Ant\Http\Uri;
+use Ant\Http\Request;
 
 class RequestTest extends \PHPUnit_Framework_TestCase
 {
@@ -70,7 +70,7 @@ EOT;
         $requestString = <<<EOT
 POST /Test HTTP/1.1
 Content-Type: application/json
-Host: www.example.com\r\n\r\n
+Host: www.example.com\r\n
 {"_method":"DELETE"}
 EOT;
 
@@ -88,7 +88,7 @@ EOT;
         //================================== 测试Uri ==================================//
         $request = $this->createRequest();
         //获取Uri
-        $this->assertEquals('/Test',$request->getRequestBasePath());
+        $this->assertEquals('/Test',$request->getRequestRouteUri());
         $this->assertEquals('/Test?key=value#hello',$request->getRequestTarget());
         $this->assertEquals('http://www.example.com:80/Test?key=value#hello',(string)$request->getUri());
         $this->assertEquals(['key' => 'value'],$request->getQueryparams());
@@ -96,7 +96,7 @@ EOT;
         //================================== 测试请求目标对GET参数与Uri的影响 ==================================//
         //修改请求目标
         $newRequest = $request->withRequestTarget('/Demo?name=alex&age=18');
-        $this->assertEquals('/Demo',$newRequest->getRequestBasePath());
+        $this->assertEquals('/Demo',$newRequest->getRequestRouteUri());
         $this->assertEquals('/Demo?name=alex&age=18',$newRequest->getRequestTarget());
         $this->assertEquals('http://www.example.com:80/Demo?name=alex&age=18',(string)$newRequest->getUri());
         $this->assertEquals(['name' => 'alex','age' => '18'],$request->getQueryParams());
@@ -112,7 +112,7 @@ EOT;
         //修改Uri
         $newRequest = $request->withUri(new Uri('http://www.domain.com/foobar?test_key=test_value'));
         $this->assertEquals('/foobar?test_key=test_value',$newRequest->getRequestTarget());
-        $this->assertEquals('/foobar',$newRequest->getRequestBasePath());
+        $this->assertEquals('/foobar',$newRequest->getRequestRouteUri());
         $this->assertEquals(['test_key' => 'test_value'],$newRequest->getQueryParams());
 
         //================================== 测试输入非法参数 ==================================//
@@ -138,5 +138,111 @@ EOT;
         $newRequest = $request->withCookieParams($cookie);
         $this->assertEquals($cookie,$newRequest->getCookieParams());
         $this->assertEquals("GET /Test?key=value#hello HTTP/1.1\r\nHost: www.example.com\r\nAccept: application/json\r\nCookie: foo=bar; key=value; PHPSESSID=test\r\n\r\n",(string)$newRequest);
+    }
+
+    //Todo 测试解析Body文件
+
+    /**
+     * 当请求的Body类型为Json时的解析结果
+     */
+    public function testContentTypeIsJson()
+    {
+        $requestString = <<<EOT
+POST /Test HTTP/1.1
+Content-Type: application/json
+Host: www.example.com\r\n
+{"foo":"bar","fii":"bae"}
+EOT;
+        $request = Request::createFromRequestStr($requestString);
+
+        $this->assertEquals('bar',$request->getBodyParam('foo'));
+        $this->assertEquals('bae',$request->getBodyParam('fii'));
+        $this->assertEquals(['foo' => 'bar','fii' => 'bae'],$request->getParsedBody());
+    }
+
+    /**
+     * 当请求的Body类型为Json时的解析结果
+     */
+    public function testContentTypeIsXml()
+    {
+        $requestString = <<<EOT
+POST /Test HTTP/1.1
+Content-Type: application/xml
+Host: www.example.com\r\n
+<?xml version="1.0"?>
+<xml><foo>bar</foo><fii>bae</fii></xml>
+EOT;
+        $request = Request::createFromRequestStr($requestString);
+
+        $this->assertEquals('bar',$request->getBodyParam('foo'));
+        $this->assertEquals('bae',$request->getBodyParam('fii'));
+        $this->assertInstanceOf(\SimpleXMLElement::class,$request->getParsedBody());
+    }
+
+    /**
+     * 当请求的body类型为urlencode时的解析结果
+     */
+    public function testContentTypeIsUrlEncode()
+    {
+        $requestString = <<<EOT
+POST /Test HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+Host: www.example.com\r\n
+foo=bar&fii=bae
+EOT;
+        $request = Request::createFromRequestStr($requestString);
+
+        $this->assertEquals('bar',$request->getBodyParam('foo'));
+        $this->assertEquals('bae',$request->getBodyParam('fii'));
+        $this->assertEquals(['foo' => 'bar','fii' => 'bae'],$request->getParsedBody());
+    }
+
+    /**
+     * 测试解析表单数据
+     */
+    public function testBodyIsForm()
+    {
+        $requestString = <<<EOT
+POST / HTTP/1.1
+Host: 127.0.0.1:81
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryF7ujiYJ1r6fEQ1Qu\r\n
+------WebKitFormBoundaryF7ujiYJ1r6fEQ1Qu
+Content-Disposition: form-data; name="foo"
+
+bar
+------WebKitFormBoundaryF7ujiYJ1r6fEQ1Qu
+Content-Disposition: form-data; name="fii"
+
+bae
+------WebKitFormBoundaryF7ujiYJ1r6fEQ1Qu--\r\n\r\n
+EOT;
+        $request = Request::createFromRequestStr($requestString);
+
+        $this->assertEquals('bar',$request->getBodyParam('foo'));
+        $this->assertEquals('bae',$request->getBodyParam('fii'));
+        $this->assertEquals(['foo' => 'bar','fii' => 'bae'],$request->getParsedBody());
+    }
+
+    /**
+     * 测试修改body参数对request对象的影响
+     */
+    public function testToModifyTheEffectsOfBodyParams()
+    {
+        $request = (new Request('POST','http://www.example.com'))
+            ->withHeader('Content-Type','application/json')
+            ->withParsedBody([
+                'foo'   =>  'bar'
+            ]);
+
+        $this->assertEquals('bar',$request->getBodyParam('foo'));
+        $this->assertNotEquals("POST / HTTP/1.1\r\nContent-Type: application/json\r\nHost: www.example.com\r\n\r\n{\"foo\":\"bar\"}",$request->__toString());
+        $this->assertEquals("POST / HTTP/1.1\r\nContent-Type: application/json\r\nHost: www.example.com\r\n\r\n",$request->__toString());
+    }
+
+    public function testRequestAcceptType()
+    {
+        $request = $this->createRequest();
+
+        $this->assertEquals('json',$request->getAcceptType());
     }
 }
