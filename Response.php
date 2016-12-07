@@ -178,6 +178,8 @@ class Response extends Message implements ResponseInterface
     ];
 
     /**
+     * 通过http报头跟body信息创建一个response对象
+     *
      * @param array $headerData
      * @param $bodyBuffer
      * @return static
@@ -186,13 +188,16 @@ class Response extends Message implements ResponseInterface
      */
     public static function createFromRequestResult(array $headerData, $bodyBuffer = '')
     {
+        //获取协议版本,响应码,响应短语
         list($protocol ,$statusCode, $responsePhrase) = explode(' ', array_shift($headerData), 3);
         $protocol = explode('/',$protocol,2)[1];
 
+        //获取http报头信息
         $headers = [];
         $cookies = [];
         foreach ($headerData as $content) {
             list($name, $value) = explode(':', $content, 2);
+            //cookie的报头名可重复,所以单独写入cookie数组
             if('set-cookie' != $name = strtolower($name)){
                 $headers[$name] = explode(',',trim($value));
             }else{
@@ -205,13 +210,21 @@ class Response extends Message implements ResponseInterface
                     $cookie[trim($key)] = trim($value);
                 }
 
-                $cookie = array_intersect_key ($cookie,static::$cookieDefaults);
+                $cookie = array_intersect_key($cookie,static::$cookieDefaults);
                 $cookies[$name] = array_replace(static::$cookieDefaults,$cookie);
             }
         }
 
-        $response = new static($statusCode, $headers, Body::createFromString($bodyBuffer), $responsePhrase, $protocol);
+        //创建Response实例
+        $response = new static(
+            $statusCode,
+            $headers,
+            Body::createFromString($bodyBuffer),
+            $responsePhrase,
+            $protocol
+        );
 
+        //将cookie保存至response中
         return $response->replaceCookie($cookies);
     }
 
@@ -455,14 +468,13 @@ class Response extends Message implements ResponseInterface
     public function __toString()
     {
         $output = sprintf(
-            'HTTP/%s %s %s',
+            "HTTP/%s %s %s\r\n",
             $this->getProtocolVersion(),
             $this->getStatusCode(),
             $this->getReasonPhrase()
         );
         $output .= $this->headerToString();
         $output .= $this->getCookieHeader();
-        $output .= PHP_EOL;
         $output .= PHP_EOL;
         $output .= (string)$this->getBody();
 
@@ -514,6 +526,6 @@ class Response extends Message implements ResponseInterface
             $result[] = 'Set-Cookie: '.implode('; ',$cookie);
         }
 
-        return $result ? PHP_EOL.implode(PHP_EOL,$result) : '';
+        return $result ? implode(PHP_EOL,$result).PHP_EOL : '';
     }
 }

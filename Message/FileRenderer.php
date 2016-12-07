@@ -5,11 +5,13 @@ use Psr\Http\Message\MessageInterface;
 
 class FileRenderer extends Renderer
 {
+    public $fileName = 'example.txt';
+
     public function decorate(MessageInterface $http)
     {
         $headers = [
             'Content-Type' => 'application/octet-stream',
-            'Content-Disposition' => 'attachment; filename="example.txt"',
+            "Content-Disposition" => "attachment; filename=\"{$this->fileName}\"",
             'Content-Transfer-Encoding' => 'binary',
         ];
 

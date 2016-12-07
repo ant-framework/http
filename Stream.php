@@ -40,6 +40,11 @@ class Stream implements StreamInterface
     protected $isWritable = false;
 
     /**
+     * @var array 流的元数据
+     */
+    protected $metadata = [];
+
+    /**
      * 可用写模式
      *
      * @var array
@@ -75,10 +80,10 @@ class Stream implements StreamInterface
             throw new UnexpectedValueException(__METHOD__ . ' argument must be a valid PHP resource');
         }
         $this->stream = $stream;
+        $this->metadata = stream_get_meta_data($this->stream);
 
-        $meta = $this->getMetadata();
-        $mode = $meta['mode'];
-        $this->isSeekable = $meta['seekable'];
+        $mode = $this->getMetadata('mode');
+        $this->isSeekable = $this->getMetadata('seekable');
         $this->isReadable = isset($this->readMode[$mode]) ?: false;
         $this->isWritable = isset($this->writeMode[$mode]) ?: false;
     }
@@ -131,9 +136,10 @@ class Stream implements StreamInterface
 
         $oldResource = $this->stream;
         $this->stream = null;
-        $this->isSeekable = null;
-        $this->isReadable = null;
-        $this->isWritable = null;
+        $this->isSeekable = false;
+        $this->isReadable = false;
+        $this->isWritable = false;
+        $this->metadata = [];
 
         return $oldResource;
     }
@@ -223,7 +229,7 @@ class Stream implements StreamInterface
      */
     public function read($length)
     {
-        if (!$this->isReadable() || ($data = stream_get_contents($this->stream, $length,$this->tell())) === false){
+        if (!$this->isReadable() || ($data = stream_get_contents($this->stream, $length, $this->tell())) === false){
             throw new RuntimeException('Could not read from stream');
         }
 
@@ -260,13 +266,14 @@ class Stream implements StreamInterface
      */
     public function write($content)
     {
-        if (null !== $content &&
+        if (
+            !is_null($content) &&
             !is_string($content) &&
             !is_numeric($content) &&
-            !method_exists($content,'__toString'))
-        {
+            !method_exists($content,'__toString')
+        ) {
             //参数错误
-            throw new UnexpectedValueException(
+            throw new RuntimeException(
                 sprintf('The Response content must be a string or object implementing __toString(), "%s" given.', gettype($content))
             );
         }
@@ -300,13 +307,11 @@ class Stream implements StreamInterface
      */
     public function getMetadata($key = null)
     {
-        $meta = stream_get_meta_data($this->stream);
-
         if($key === null){
-            return $meta;
+            return $this->metadata;
         }
 
-        return isset($meta[$key]) ? $meta[$key] : null;
+        return isset($this->metadata[$key]) ? $this->metadata[$key] : null;
     }
 
     /**

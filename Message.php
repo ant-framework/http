@@ -265,7 +265,7 @@ abstract class Message implements MessageInterface
      *
      * @return string
      */
-    protected function headerToString()
+    public function headerToString()
     {
         $result = [];
 
@@ -278,7 +278,7 @@ abstract class Message implements MessageInterface
             $result[] = sprintf('%s: %s',$headerName,$headerValue);
         }
 
-        return $result ? PHP_EOL.implode(PHP_EOL,$result) : '';
+        return $result ? implode(PHP_EOL,$result).PHP_EOL : '';
     }
 
     /**

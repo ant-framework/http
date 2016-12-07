@@ -693,14 +693,13 @@ class Request extends Message implements RequestInterface
         }
 
         $requestString = sprintf(
-            '%s %s HTTP/%s',
+            "%s %s HTTP/%s\r\n",
             $this->getMethod(),
             $this->getRequestTarget(),
             $this->getProtocolVersion()
         );
 
         $requestString .= $this->headerToString();
-        $requestString .= PHP_EOL;
         $requestString .= PHP_EOL;
         $requestString .= (string)$this->getBody();
 
