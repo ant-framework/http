@@ -49,7 +49,7 @@ class Uri implements UriInterface
      *
      * @var string
      */
-    protected $password = null;
+    protected $pass = null;
 
     /**
      * 请求资源路径
@@ -113,7 +113,7 @@ class Uri implements UriInterface
      * Uri constructor.
      * @param $uri
      */
-    public function __construct($uri)
+    public function __construct($uri = '')
     {
         foreach(parse_url($uri) as $key => $value){
             $this->$key = $value;
@@ -165,7 +165,7 @@ class Uri implements UriInterface
      */
     public function getUserInfo()
     {
-        return $this->user . ($this->password ? ':' . $this->password : '');
+        return $this->user . ($this->pass ? ':' . $this->pass : '');
     }
 
     /**
@@ -179,7 +179,7 @@ class Uri implements UriInterface
     {
         $clone = clone $this;
         $clone->user = $user;
-        $clone->password = $password;
+        $clone->pass = $password;
 
         return $clone;
     }
@@ -263,7 +263,7 @@ class Uri implements UriInterface
      */
     public function getPath()
     {
-        return $this->path ?: '/';
+        return '/'.ltrim($this->path,'/');
     }
 
     /**
@@ -352,7 +352,7 @@ class Uri implements UriInterface
      */
     public function getRequestTarget()
     {
-        $requestTarget = '/'.ltrim($this->getPath(),'/');
+        $requestTarget = $this->getPath();
 
         if ($query = $this->getQuery()) {
             $requestTarget .= '?'.$query;

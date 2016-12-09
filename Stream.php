@@ -278,7 +278,7 @@ class Stream implements StreamInterface
             );
         }
 
-        if (!$this->isWritable() || ($written = fwrite($this->stream, $content)) === false) {
+        if (!$this->isWritable() || ($written = fwrite($this->stream, (string)$content)) === false) {
             //写入失败
             throw new RuntimeException('Could not write to stream');
         }

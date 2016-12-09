@@ -125,6 +125,9 @@ class StreamTest extends \PHPUnit_Framework_TestCase
         $stream->seek(1);
     }
 
+    /**
+     * 测试基本功能
+     */
     public function testStream()
     {
         $stream = new Stream(fopen('php://temp','r+'));
@@ -135,8 +138,19 @@ class StreamTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue(is_resource($stream->detach()));
     }
 
+    /**
+     * 获取流的元数据
+     */
     public function testStreamMetadata()
     {
+        $stream = new Stream(fopen('php://temp','r'));
 
+        $metadata = $stream->getMetadata();
+
+        $this->assertEquals('PHP',$metadata['wrapper_type']);
+        $this->assertEquals('TEMP',$metadata['stream_type']);
+        $this->assertEquals('rb',$metadata['mode']);
+        $this->assertEquals('php://temp',$metadata['uri']);
+        $this->assertTrue($metadata['seekable']);
     }
 }
