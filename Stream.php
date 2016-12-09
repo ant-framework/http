@@ -1,6 +1,7 @@
 <?php
 namespace Ant\Http;
 
+use Doctrine\Instantiator\Exception\InvalidArgumentException;
 use RuntimeException;
 use UnexpectedValueException;
 use Psr\Http\Message\StreamInterface;
@@ -9,13 +10,11 @@ use Psr\Http\Message\StreamInterface;
  * Class Stream
  * @package Ant\Http
  *
- * @example
- *
- * 必须用stream_copy_to_stream将input流拷贝到另一个流上,不然无法使用fstat函数
- * $stream = fopen('php://temp', 'w+');
- * stream_copy_to_stream(fopen('php://input', 'r'), $stream);
- * rewind($stream);
- * $stream = new Ant\Http\Stream($stream);
+ * @note
+ * stream "php://output"  mode can only be "wb"
+ * stream "php://input"   mode can only be "rb"
+ * stream "php://memory"  mode certain support "rb"
+ * stream "php://temp"    mode certain support "rb"
  */
 class Stream implements StreamInterface
 {
@@ -229,6 +228,7 @@ class Stream implements StreamInterface
      */
     public function read($length)
     {
+        //从stream指针的位置开始读取
         if (!$this->isReadable() || ($data = stream_get_contents($this->stream, $length, $this->tell())) === false){
             throw new RuntimeException('Could not read from stream');
         }
@@ -273,7 +273,7 @@ class Stream implements StreamInterface
             !method_exists($content,'__toString')
         ) {
             //参数错误
-            throw new RuntimeException(
+            throw new InvalidArgumentException(
                 sprintf('The Response content must be a string or object implementing __toString(), "%s" given.', gettype($content))
             );
         }
@@ -289,7 +289,6 @@ class Stream implements StreamInterface
 
     /**
      * 获取剩余数据流
-     * Returns the remaining contents in a string
      *
      * @return string
      * @throws RuntimeException if unable to read. (无法读取？为空还是读取失败？)
@@ -315,7 +314,7 @@ class Stream implements StreamInterface
     }
 
     /**
-     * 检查是否是stream
+     * 检查资源是否存在
      *
      * @return bool
      */

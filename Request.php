@@ -431,7 +431,7 @@ class Request extends Message implements RequestInterface
                         $file->rewind();
 
                         $this->uploadFiles[$match[1]] = new UploadedFile([
-                            'resources' => $file,
+                            'stream'    => $file,
                             'name'      => $match[1],
                             'size'      => $file->getSize()
                         ]);

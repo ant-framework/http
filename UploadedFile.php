@@ -63,12 +63,13 @@ class UploadedFile implements UploadedFileInterface
      */
     public function __construct($file)
     {
-        if(!isset($file['tmp_name']) && !isset($file['resources'])){
-            throw new InvalidArgumentException('File is invalid or not upload file via POST');
-        }
+        //在临时文件不存在时,尝试获取文件流
+        if(!isset($file['tmp_name'])){
+            if(!isset($file['stream']) && !$file['stream'] instanceof StreamInterface){
+                throw new InvalidArgumentException('File is invalid or not upload file via POST');
+            }
 
-        if(isset($file['resources']) && $file['resources'] instanceof StreamInterface){
-            $this->stream = $file['resources'];
+            $this->stream = $file['stream'];
         }
 
         $this->file = $file;
@@ -108,15 +109,20 @@ class UploadedFile implements UploadedFileInterface
             throw new RuntimeException('File was moved to other directory');
         }
 
+        $targetIsStream = strpos($targetPath, '://') > 0;
+        if (!$targetIsStream && !is_writable(dirname($targetPath))){
+            throw new InvalidArgumentException('Upload target path is not writable');
+        }
+
         if($this->stream !== null){
+            if(!$targetIsStream){
+                //删除文件之后再写入
+                unlink($targetPath);
+            }
+
             //将流拷贝到目标文件上
             stream_copy_to_stream($this->stream->detach(),fopen($targetPath,'w+'));
         }else{
-            $targetIsStream = strpos($targetPath, '://') > 0;
-            if (!$targetIsStream && !is_writable(dirname($targetPath))){
-                throw new InvalidArgumentException('Upload target path is not writable');
-            }
-
             if ($targetIsStream) {
                 //处理流
                 if (!copy($this->file['tmp_name'], $targetPath)) {

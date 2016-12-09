@@ -4,7 +4,7 @@
 ```php
 include "vendor/autoload.php";
 
-$request = new \Ant\Http\Request('POST','http://www.example.com');
+$request = new \Ant\Http\Request('GET','http://www.example.com');
 
 echo $request;
 
@@ -28,6 +28,7 @@ $response = $response->selectRenderer('json')
     ->setPackage(['foo' => 'bar'])
     ->decorate($response);
 
+echo $response;
 //output ..
 /*
 HTTP/1.1 200 OK

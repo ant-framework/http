@@ -5,66 +5,65 @@ use Ant\Http\Stream;
 
 class StreamTest extends \PHPUnit_Framework_TestCase
 {
-    public function testStream()
-    {
-        $stream = new Stream(fopen('php://temp','r+'));
-
-        $stream->write('foobar');
-
-        //��Ϊ�򿪵�����,����û�н�β
-        $this->assertFalse($stream->eof());
-        $this->assertEquals(6,$stream->tell());
-        $this->assertEquals(6,$stream->getSize());
-        $this->assertTrue($stream->isSeekable());
-        $this->assertTrue($stream->isReadable());
-        $this->assertTrue($stream->isWritable());
-        $this->assertEquals('foobar',$stream->__toString());
-    }
-
     /**
-     * ���Զ�дģʽ
+     * php常用IO流读写测试
      */
     public function testReadAndWriteMode()
     {
+        //==================== temp流必然支持读 ======================//
         $stream = new Stream(fopen('php://temp','r+'));
-
         $this->assertTrue($stream->isWritable());
         $this->assertTrue($stream->isReadable());
 
-        //==================== ���Էָ��� ======================//
         $stream = new Stream(fopen('php://temp','r'));
-
         $this->assertTrue($stream->isReadable());
         $this->assertFalse($stream->isWritable());
+
+        //==================== input流为只可读 ======================//
+        $stream = new Stream(fopen('php://input','r'));
+        $this->assertTrue($stream->isReadable());
+        $this->assertFalse($stream->isWritable());
+
+        $stream = new Stream(fopen('php://input','w+'));
+        $this->assertFalse($stream->isWritable());
+        $this->assertTrue($stream->isReadable());
+
+        //==================== output流为只可写 ======================//
+        $stream = new Stream(fopen('php://output','w'));
+        $this->assertFalse($stream->isReadable());
+        $this->assertTrue($stream->isWritable());
+
+        $stream = new Stream(fopen('php://output','r+'));
+        $this->assertFalse($stream->isReadable());
+        $this->assertTrue($stream->isWritable());
     }
 
     /**
-     *
+     * @expectedException \RuntimeException
      */
     public function testReadStream()
     {
-        $stream = new Stream(fopen(__DIR__.DIRECTORY_SEPARATOR.'Test_Stream.txt','r'));
+        $filename = __DIR__.DIRECTORY_SEPARATOR.'Test_Stream.txt';
+        $stream = new Stream(fopen($filename,'r'));
 
         $this->assertEquals('f',$stream->read(1));
         $this->assertEquals('oo',$stream->read(2));
         $this->assertEquals('bar',$stream->read(3));
 
         $stream->rewind();
-
         $this->assertEquals('foo',$stream->read(3));
         $this->assertEquals('bar',$stream->read(3));
 
         $stream->rewind();
-
         $this->assertEquals('f',$stream->read(1));
         $this->assertEquals('oobar',$stream->getContents());
+        $this->assertEquals('foobar',$stream->__toString());
 
-        try{
-            $stream = new Stream(fopen('php://temp','w'));
-            $stream->write('foobar');
+        //在只写模式进行读取
+        $stream = new Stream(fopen($filename,'w'));
+        $stream->write('foobar');
+        if(!$stream->isReadable()){
             $stream->read(6);
-        }catch(\RuntimeException $e){
-            $this->assertInstanceOf(\RuntimeException::class,$e);
         }
     }
 
@@ -74,13 +73,70 @@ class StreamTest extends \PHPUnit_Framework_TestCase
     public function testWriteStream()
     {
         $stream = new Stream(fopen('php://temp','w'));
-
         $stream->write('foobar');
 
         $this->assertEquals('',$stream->getContents());
 
-        $stream = new Stream(fopen('php://temp','r'));
-        $stream->write('foobar');
+        $stream->rewind();
+        $this->assertEquals('foobar',$stream->getContents());
+
+        try{
+            //输入错误参数
+            $stream->write(['foo' => 'bar']);
+        }catch(\InvalidArgumentException $e){
+            $this->assertInstanceOf(\InvalidArgumentException::class,$e);
+        }
+
+        //在只读模式进行写入
+        $stream = new Stream(fopen('php://input','r'));
+        if(!$stream->isWritable()){
+            $stream->write('foobar');
+        }
     }
 
+    /**
+     * 尝试在流中进行定位
+     * @expectedException \RuntimeException
+     */
+    public function testStreamSeek()
+    {
+        $stream = new Stream(fopen('php://temp','r+'));
+
+        $this->assertTrue($stream->isSeekable());
+
+        //定位
+        $stream->write('foobar');
+        $stream->seek(3);
+        $this->assertEquals(3,$stream->tell());
+        $this->assertEquals('bar',$stream->getContents());
+
+        $stream = new Stream(stream_socket_server('tcp://0.0.0.0:12345'));
+
+        $this->assertFalse($stream->isSeekable());
+
+        try{
+            //尝试重置流
+            $stream->rewind();
+        }catch(\InvalidArgumentException $e){
+            $this->assertInstanceOf(\RuntimeException::class,$e);
+        }
+
+        //无法定位时强行定位抛出异常
+        $stream->seek(1);
+    }
+
+    public function testStream()
+    {
+        $stream = new Stream(fopen('php://temp','r+'));
+        $stream->write('foobar');
+
+        $this->assertFalse($stream->eof());
+        $this->assertEquals(6,$stream->getSize());
+        $this->assertTrue(is_resource($stream->detach()));
+    }
+
+    public function testStreamMetadata()
+    {
+
+    }
 }
