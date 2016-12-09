@@ -1,4 +1,9 @@
-# Ant-Http
+# Ant Framework Http Module
+
+### 安装
+```
+composer require ant-framework/http
+```
 
 #### 创建一个请求
 ```php
