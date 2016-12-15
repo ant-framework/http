@@ -75,7 +75,7 @@ class Request extends Message implements RequestInterface
      *
      * @var bool
      */
-    protected $bodyAlreadyParse = false;
+    protected $usesBody = false;
 
     /**
      * 通过Tcp输入流解析Http请求
@@ -368,7 +368,7 @@ class Request extends Message implements RequestInterface
         }
 
         //如果解析后的参数为空,不允许进行第二次解析
-        if($this->bodyAlreadyParse){
+        if($this->usesBody){
             return null;
         }
 
@@ -395,7 +395,7 @@ class Request extends Message implements RequestInterface
             }
         }
 
-        $this->bodyAlreadyParse = true;
+        $this->usesBody = true;
         return null;
     }
 
