@@ -9,6 +9,8 @@ use Psr\Http\Message\StreamInterface;
 /**
  * Class Stream
  * @package Ant\Http
+ * Todo StringStream
+ * Todo IteratorStream
  *
  * @note
  * stream "php://output"  mode can only be "wb"

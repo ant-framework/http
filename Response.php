@@ -333,7 +333,10 @@ class Response extends Message implements ResponseInterface
             $value = ['value' => (string)$value];
         }
 
-        $this->cookies[$name] = array_replace(static::$cookieDefaults, $value);
+        $value = array_replace(static::$cookieDefaults, $value);
+        $key = sprintf('%s@%s:%s', $name, $value['domain'], $value['path']);
+
+        $this->cookies[$key] = $value;
 
         return $this;
     }
