@@ -1,9 +1,9 @@
 <?php
 namespace Ant\Http;
 
-use Doctrine\Instantiator\Exception\InvalidArgumentException;
 use RuntimeException;
 use UnexpectedValueException;
+use InvalidArgumentException;
 use Psr\Http\Message\StreamInterface;
 
 /**

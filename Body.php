@@ -22,7 +22,7 @@ class Body extends Stream
     public static function createFromString($data)
     {
         if(!is_string($data)){
-            throw new \InvalidArgumentException("");
+            throw new \InvalidArgumentException("Parameter must be a string");
         }
 
         $stream = fopen("php://temp","w+");

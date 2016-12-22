@@ -294,7 +294,7 @@ abstract class Message implements MessageInterface
         if(is_array($attribute)){
             list($array,$key) = $attribute;
 
-            // 兼容5.6
+            // 兼容7以下
             $array = &$result->$array;
             $array[$key] = $value;
         }else{

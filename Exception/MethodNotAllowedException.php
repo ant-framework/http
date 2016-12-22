@@ -11,27 +11,18 @@ class MethodNotAllowedException extends HttpException
 {
     protected $allowed = [];
 
-    /**
-     * 抛出405异常
-     *
-     * @param array $allowed
-     * @param null $message
-     * @param \Exception|null $previous
-     * @param array $headers
-     * @param int $code
-     */
     public function __construct(
         array $allowed,
         $message = null,
-        \Exception $previous = null,
+        $code = 0,
         array $headers = [],
-        $code = 0
+        \Exception $previous = null
     ){
         $this->allowed = $allowed;
         $allowed = ['allowed' => implode(',',$allowed)];
         $headers = array_merge($headers,$allowed);
 
-        parent::__construct(405,$message,$previous,$headers,$code);
+        parent::__construct(405, $message, $code, $headers, $previous);
     }
 
     /**

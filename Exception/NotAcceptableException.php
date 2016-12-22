@@ -9,16 +9,8 @@ namespace Ant\Http\Exception;
  */
 class NotAcceptableException extends HttpException
 {
-    /**
-     * NotAcceptableException constructor.
-     *
-     * @param null $message
-     * @param \Exception|null $previous
-     * @param array $headers
-     * @param int $code
-     */
-    public function __construct($message = null,\Exception $previous = null, array $headers = [], $code = 0)
+    public function __construct($message = null, $code = 0, array $headers = [], \Exception $previous = null)
     {
-        parent::__construct(406, $message, $previous, $headers, $code);
+        parent::__construct(406, $message, $code, $headers, $previous);
     }
 }

@@ -9,15 +9,8 @@ namespace Ant\Http\Exception;
  */
 class ForbiddenException extends HttpException
 {
-    /**
-     * ForbiddenException constructor.
-     * @param null $message
-     * @param \Exception|null $previous
-     * @param array $headers
-     * @param int $code
-     */
-    public function __construct($message = null,\Exception $previous = null, array $headers = [], $code = 0)
+    public function __construct($message = null, $code = 0, array $headers = [], \Exception $previous = null)
     {
-        parent::__construct(403, $message, $previous, $headers, $code);
+        parent::__construct(403, $message, $code, $headers, $previous);
     }
 }

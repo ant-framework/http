@@ -411,14 +411,14 @@ class Request extends Message implements RequestInterface
             $this->uploadFiles = UploadedFile::parseUploadedFiles($_FILES);
             return;
         }
-        //将最后一行分界符剔除
+        // 将最后一行分界符剔除
         $body = substr((string)$this->getBody(), 0 ,$size - (strlen($bodyBoundary) + 4));
 
         foreach(explode($bodyBoundary,$body) as $buffer){
             if($buffer == ''){
                 continue;
             }
-            //将Body头信息跟内容拆分
+            // 将Body头信息跟内容拆分
             list($header, $bufferBody) = explode("\r\n\r\n", $buffer, 2);
             $bufferBody = substr($bufferBody, 0, -2);
             foreach (explode("\r\n", $header) as $item) {
