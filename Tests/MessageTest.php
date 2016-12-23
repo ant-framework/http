@@ -19,7 +19,7 @@ class MessageTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * ²âÊÔHttp Message²»±äĞÔ
+     * æµ‹è¯•Httpä¸å˜æ€§
      */
     public function testHttpMessageImmutability()
     {
@@ -33,6 +33,9 @@ class MessageTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($newMessage,$message);
     }
 
+    /**
+     * æµ‹è¯•Httpåè®®
+     */
     public function testHttpMessageProtocolVersion()
     {
         $message = (new HttpMessage())->withProtocolVersion('1.0');
@@ -42,24 +45,31 @@ class MessageTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('1.1',$message->withProtocolVersion('1.1')->getProtocolVersion());
     }
 
+    /**
+     * æµ‹è¯•Httpå¤´
+     */
     public function testHttpMessageHeader()
     {
         $message = (new HttpMessage())->keepImmutability(false);
 
+        // add header
         $message->withHeader('foo','bar,bat');
         $this->assertTrue($message->hasHeader('foo'));
         $this->assertEquals('bar,bat',$message->getHeaderLine('FoO'));
         $this->assertEquals(['bar','bat'],$message->getHeader('Foo'));
         $this->assertEquals(['foo' => ['bar','bat']],$message->getHeaders());
 
+        // add to append
         $message->withAddedHeader('FOO','bay');
         $this->assertEquals('bar,bat,bay',$message->getHeaderLine('FoO'));
         $this->assertEquals(['bar','bat','bay'],$message->getHeader('Foo'));
         $this->assertEquals(['foo' => ['bar','bat','bay']],$message->getHeaders());
 
+        // output header
         $message->withHeader('fii',['baa','bae']);
         $this->assertEquals("Foo: bar,bat,bay\r\nFii: baa,bae\r\n",$message->headerToString());
 
+        // remove header
         $message->withoutHeader('fOO')->withoutHeader('Fii');
         $this->assertFalse($message->hasHeader('foo'));
         $this->assertEquals('',$message->getHeaderLine('FoO'));
@@ -67,6 +77,9 @@ class MessageTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals([],$message->getHeaders());
     }
 
+    /**
+     * æµ‹è¯•Body
+     */
     public function testHttpMessageBody()
     {
         $message = (new HttpMessage())->keepImmutability(false);
@@ -75,11 +88,14 @@ class MessageTest extends \PHPUnit_Framework_TestCase
         $this->assertInstanceOf(PsrStream::class,$message->getBody());
     }
 
+    /**
+     * æµ‹è¯•Bodyè£…é¥°å™¨
+     */
     public function testHttpBodyRenderer()
     {
         $message = (new HttpMessage())->keepImmutability(false);
 
-        //Ñ¡ÔñJsonäÖÈ¾Æ÷
+        // è®¾ç½®æ ¼å¼ä¸ºJson
         $message->withBody(new Stream(fopen('php://temp','w+')))
             ->selectRenderer('json')
             ->setPackage(['foo' => 'bar'])
@@ -88,16 +104,16 @@ class MessageTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('{"foo":"bar"}',$message->getBody()->__toString());
         $this->assertEquals('application/json',$message->getHeaderLine('content-type'));
 
-        //Ñ¡ÔñJsonpäÖÈ¾Æ÷
+        // è®¾ç½®æ ¼å¼ä¸ºjsonp
         $message->withBody(new Stream(fopen('php://temp','w+')))
-            ->selectRenderer('js')
+            ->selectRenderer('jsonp')
             ->setPackage(['foo' => 'bar'])
             ->decorate();
 
         $this->assertEquals('callback({"foo":"bar"});',$message->getBody()->__toString());
         $this->assertEquals('application/javascript',$message->getHeaderLine('content-type'));
 
-        //Ñ¡ÔñXmläÖÈ¾Æ÷
+        // è®¾ç½®æ ¼å¼ä¸ºxml
         $message->withBody(new Stream(fopen('php://temp','w+')))
             ->selectRenderer('xml')
             ->setPackage(['foo' => 'bar'])
@@ -110,7 +126,7 @@ class MessageTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('bar',$result->foo);
         $this->assertEquals('application/xml',$message->getHeaderLine('content-type'));
 
-        //Ñ¡ÔñÎÄ¼şäÖÈ¾Æ÷
+        // æµ‹è¯•æ ¼å¼ä¸ºfile
         $renderer = $message->withBody(new Stream(fopen('php://temp','w+')))
             ->selectRenderer('file')
             ->setPackage("Test");

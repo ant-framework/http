@@ -168,13 +168,14 @@ class Response extends Message implements ResponseInterface
      * @var array
      */
     protected static $cookieDefaults = [
-        'value' => '',          //cookie值
-        'expires' => 0,         //超时时间
-        'path' => '/',          //cookie作用目录
-        'domain' => '',         //cookie作用域名
-        'hostonly' => null,     //是否是host专属
-        'secure' => false,      //是否https专属
-        'httponly' => false,    //是否只有http可以使用cookie(启用后,JS将无法访问该cookie)
+        'name'      =>  '',
+        'value'     =>  '',           //cookie值
+        'expires'   =>  0,            //超时时间
+        'path'      =>  '/',          //cookie作用目录
+        'domain'    =>  '',           //cookie作用域名
+        'hostonly'  =>  null,        //是否是host专属
+        'secure'    =>  false,       //是否https专属
+        'httponly'  =>  false,       //是否只有http可以使用cookie(启用后,JS将无法访问该cookie)
     ];
 
     /**
@@ -190,7 +191,7 @@ class Response extends Message implements ResponseInterface
     {
         //获取协议版本,响应码,响应短语
         list($protocol ,$statusCode, $responsePhrase) = explode(' ', array_shift($headerData), 3);
-        $protocol = explode('/',$protocol,2)[1];
+        $protocol = str_replace('HTTP/', '', $protocol);
 
         //获取http报头信息
         $headers = [];
@@ -211,7 +212,7 @@ class Response extends Message implements ResponseInterface
                 }
 
                 $cookie = array_intersect_key($cookie,static::$cookieDefaults);
-                $cookies[$name] = array_replace(static::$cookieDefaults,$cookie);
+                $cookies[trim($name)] = array_replace(static::$cookieDefaults,$cookie);
             }
         }
 
@@ -333,6 +334,7 @@ class Response extends Message implements ResponseInterface
             $value = ['value' => (string)$value];
         }
 
+        $value['name'] = $name;
         $value = array_replace(static::$cookieDefaults, $value);
         $key = sprintf('%s@%s:%s', $name, $value['domain'], $value['path']);
 
@@ -490,10 +492,10 @@ class Response extends Message implements ResponseInterface
     protected function getCookieHeader()
     {
         $result = [];
-        foreach($this->getCookies() as $name => $properties){
+        foreach($this->getCookies() as $properties){
             $cookie = [];
 
-            $cookie[] = urlencode($name) . '=' . urlencode($properties['value']);
+            $cookie[] = urlencode($properties['name']) . '=' . urlencode($properties['value']);
 
             if (isset($properties['domain'])) {
                 $cookie[] = 'domain=' . $properties['domain'];

@@ -73,6 +73,10 @@ abstract class Message implements MessageInterface
      */
     public function withProtocolVersion($version)
     {
+        if(!is_string($version) && !is_int($version) && !is_double($version)){
+            throw new InvalidArgumentException('Input version error');
+        }
+
         return $this->changeAttribute('protocolVersion',$version);
     }
 
@@ -139,6 +143,10 @@ abstract class Message implements MessageInterface
      */
     public function withHeader($name, $value)
     {
+        if(!is_array($value) && !is_string($value)){
+            throw new InvalidArgumentException('Header must be string or array');
+        }
+
         return $this->changeAttribute(['headers',strtolower($name)],is_array($value) ? $value : explode(',',$value));
     }
 
@@ -186,7 +194,7 @@ abstract class Message implements MessageInterface
     public function addHeaderFromIterator($iterator)
     {
         if(!$iterator instanceof \Iterator && !is_array($iterator)){
-            throw new \RuntimeException('');
+            throw new \RuntimeException('Arguments must be an iterator');
         }
 
         $self = $this;
