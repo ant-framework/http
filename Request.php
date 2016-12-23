@@ -578,7 +578,7 @@ class Request extends Message implements RequestInterface
     /**
      * 获取请求的路由
      *
-     * @return array
+     * @return string
      */
     public function getRequestRouteUri()
     {

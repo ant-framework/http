@@ -9,7 +9,7 @@ interface MessageInterface extends PsrMessageInterface
      * 选择Body装饰器
      *
      * @param $type
-     * @return $this
+     * @return RendererInterface
      */
     public function selectRenderer($type);
 

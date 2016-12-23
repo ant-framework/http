@@ -83,7 +83,7 @@ class MessageTest extends \PHPUnit_Framework_TestCase
         $message->withBody(new Stream(fopen('php://temp','w+')))
             ->selectRenderer('json')
             ->setPackage(['foo' => 'bar'])
-            ->decorate($message);
+            ->decorate();
 
         $this->assertEquals('{"foo":"bar"}',$message->getBody()->__toString());
         $this->assertEquals('application/json',$message->getHeaderLine('content-type'));
@@ -92,7 +92,7 @@ class MessageTest extends \PHPUnit_Framework_TestCase
         $message->withBody(new Stream(fopen('php://temp','w+')))
             ->selectRenderer('js')
             ->setPackage(['foo' => 'bar'])
-            ->decorate($message);
+            ->decorate();
 
         $this->assertEquals('callback({"foo":"bar"});',$message->getBody()->__toString());
         $this->assertEquals('application/javascript',$message->getHeaderLine('content-type'));
@@ -101,7 +101,7 @@ class MessageTest extends \PHPUnit_Framework_TestCase
         $message->withBody(new Stream(fopen('php://temp','w+')))
             ->selectRenderer('xml')
             ->setPackage(['foo' => 'bar'])
-            ->decorate($message);
+            ->decorate();
 
         $backup = libxml_disable_entity_loader(true);
         $result = simplexml_load_string($message->getBody()->__toString());
@@ -116,7 +116,7 @@ class MessageTest extends \PHPUnit_Framework_TestCase
             ->setPackage("Test");
 
         $renderer->fileName = 'foobar.txt';
-        $renderer->decorate($message);
+        $renderer->decorate();
 
         $this->assertEquals('Test',$message->getBody()->__toString());
         $this->assertEquals('application/octet-stream',$message->getHeaderLine('content-type'));

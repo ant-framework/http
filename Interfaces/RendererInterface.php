@@ -8,6 +8,11 @@ namespace Ant\Http\Interfaces;
 interface RendererInterface
 {
     /**
+     * @param \Psr\Http\Message\MessageInterface $http
+     */
+    public function __construct(\Psr\Http\Message\MessageInterface $http);
+
+    /**
      * 设置包裹
      *
      * @param $package
@@ -18,8 +23,7 @@ interface RendererInterface
     /**
      * 装饰包裹
      *
-     * @param \Psr\Http\Message\MessageInterface $http
      * @return \Psr\Http\Message\MessageInterface
      */
-    public function decorate(\Psr\Http\Message\MessageInterface $http);
+    public function decorate();
 }

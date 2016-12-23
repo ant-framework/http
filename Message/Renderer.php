@@ -8,6 +8,20 @@ use Ant\Http\Interfaces\RendererInterface;
 abstract class Renderer implements RendererInterface
 {
     /**
+     * 响应类型
+     *
+     * @var string
+     */
+    public $type = 'text/html';
+
+    /**
+     * 响应编码
+     *
+     * @var string
+     */
+    public $charset = 'utf-8';
+
+    /**
      * 待装饰的包裹
      *
      * @var mixed
@@ -15,11 +29,17 @@ abstract class Renderer implements RendererInterface
     protected $package;
 
     /**
-     * 响应编码
-     *
-     * @var string
+     * @var MessageInterface
      */
-    protected $charset = 'utf-8';
+    protected $httpMessage;
+
+    /**
+     * @param MessageInterface $http
+     */
+    public function __construct(MessageInterface $http)
+    {
+        $this->httpMessage = $http;
+    }
 
     /**
      * 设置包裹
@@ -35,11 +55,11 @@ abstract class Renderer implements RendererInterface
     }
 
     /**
-     * @param MessageInterface $http
      * @return string
      */
-    public function getCharset(MessageInterface $http)
+    public function getType()
     {
-        return ($http instanceof ResponseInterface) ? ';charset='.$this->charset : '';
+        $charset = ($this->httpMessage instanceof ResponseInterface) ? ';charset='.$this->charset : '';
+        return $this->type.$charset;
     }
 }

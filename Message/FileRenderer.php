@@ -1,22 +1,23 @@
 <?php
 namespace Ant\Http\Message;
 
-use Psr\Http\Message\MessageInterface;
-
 class FileRenderer extends Renderer
 {
+    public $type = 'application/octet-stream';
+
     public $fileName = 'example.txt';
 
-    public function decorate(MessageInterface $http)
+    public function decorate()
     {
         $headers = [
-            'Content-Type' => 'application/octet-stream',
+            'Content-Type' => $this->type,
             "Content-Disposition" => "attachment; filename=\"{$this->fileName}\"",
             'Content-Transfer-Encoding' => 'binary',
         ];
 
+        $http = $this->httpMessage;
         foreach($headers as $name => $value){
-            $http = $http->withHeader($name,$value);
+            $http = $this->httpMessage->withHeader($name,$value);
         }
 
         if(!is_string($this->package) && !is_integer($this->package)){

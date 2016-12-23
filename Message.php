@@ -238,7 +238,9 @@ abstract class Message implements MessageInterface
             throw new NotAcceptableException('Decorative device does not exist');
         }
 
-        return new $this->renderer[$type];
+        $renderer = $this->renderer[$type];
+
+        return new $renderer($this);
     }
 
     /**

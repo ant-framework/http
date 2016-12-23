@@ -1,15 +1,15 @@
 <?php
 namespace Ant\Http\Message;
 
-use Psr\Http\Message\MessageInterface;
-
 class XmlRenderer extends  Renderer
 {
-    public function decorate(MessageInterface $http)
-    {
-        $http->getBody()->write($this->toXml());
+    public $type = 'application/xml';
 
-        return $http->withHeader('Content-Type', 'application/xml'.$this->getCharset($http));
+    public function decorate()
+    {
+        $this->httpMessage->getBody()->write($this->toXml());
+
+        return $this->httpMessage->withHeader('Content-Type', $this->getType());
     }
 
     /**
