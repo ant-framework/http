@@ -52,7 +52,7 @@ abstract class Message implements MessageInterface
         'file'  =>  FileRenderer::class,
         'json'  =>  JsonRenderer::class,
         'html'  =>  HtmlRenderer::class,
-        'js'    =>  JsonpRenderer::class,
+        'jsonp' =>  JsonpRenderer::class,
     ];
 
     /**

@@ -102,7 +102,7 @@ class ServerRequest extends Request implements ServerRequestInterface
             if ($customMethod = $this->getHeaderLine('X-Http-Method-Override')) {
                 $this->method = $customMethod;
             } elseif ($this->method === 'POST') {
-                $this->method = $this->getBodyParam('_method');
+                $this->method = $this->getBodyParam('_method') ?: 'POST';
             }
         }
 

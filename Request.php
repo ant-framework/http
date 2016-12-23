@@ -601,8 +601,8 @@ class Request extends Message implements RequestInterface
 
         //获取客户端需要的资源格式
         if(false !== ($pos = strrpos($requestUri,'.'))){
-            $requestUri = strstr($requestUri, '.', true);
             $this->acceptType = substr($requestUri, $pos + 1);
+            $requestUri = strstr($requestUri, '.', true);
         }
 
         return $requestUri;
@@ -617,10 +617,12 @@ class Request extends Message implements RequestInterface
     {
         if(is_null($this->acceptType)){
             $acceptTypes = [
-                'application/json'  =>  'json',
-                'text/xml'          =>  'xml',
-                'application/xml'   =>  'xml',
-                'text/html'         =>  'html',
+                'text/javascript'       =>  'jsonp',
+                'application/javascript'=>  'jsonp',
+                'application/json'      =>  'json',
+                'text/xml'              =>  'xml',
+                'application/xml'       =>  'xml',
+                'text/html'             =>  'html',
             ];
 
             foreach($this->getHeader('accept') as $type){
