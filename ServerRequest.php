@@ -64,15 +64,8 @@ class ServerRequest extends Request implements ServerRequestInterface
         $this->uploadFiles = UploadedFile::parseUploadedFiles($uploadFiles ?: $_FILES);
         $this->body = $body ?: RequestBody::createFromCgi();
 
-        $this->registerBodyParsers();
-        $this->initialize();
-    }
+        $this->registerBaseBodyParsers();
 
-    /**
-     * 初始化参数
-     */
-    protected function initialize()
-    {
         foreach ($this->serverParams as $key => $value) {
             //提取HTTP头
             if (isset($this->special[$key]) || strpos($key, 'HTTP_') === 0) {

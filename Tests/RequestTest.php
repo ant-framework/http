@@ -58,11 +58,12 @@ EOT;
         $request = Request::createFromRequestStr($requestString);
         $this->assertEquals("PATCH",$request->getMethod());
         $this->assertEquals("PATCH",$request->getHeaderLine('X-Http-Method-Override'));
+        $this->assertEquals("GET",$request->getOriginalMethod());
 
         //======================== 尝试在头部重写Http动词 ========================//
         $newRequest = $request->withHeader('X-Http-Method-Override','DELETE');
-        $this->assertNotEquals("DELETE",$newRequest->getMethod());
-        $this->assertEquals("PATCH",$newRequest->getMethod());
+        $this->assertEquals("DELETE",$newRequest->getMethod());
+        $this->assertEquals("GET",$request->getOriginalMethod());
     }
 
     public function testBodyParamOverrideRequestMethod()
@@ -77,6 +78,7 @@ EOT;
         //================= 当请求为POST的时候尝试用post参数重写请求方法 =================//
         $request = Request::createFromRequestStr($requestString);
         $this->assertEquals("DELETE",$request->getMethod());
+        $this->assertEquals("POST",$request->getOriginalMethod());
         $this->assertEquals("DELETE",$request->getBodyParam('_method'));
     }
 
