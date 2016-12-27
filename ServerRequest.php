@@ -5,6 +5,7 @@ use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
+ * Todo 单元测试
  * Class ServerRequest
  * @package Ant\Http
  * @see http://www.php-fig.org/psr/psr-7/
@@ -60,9 +61,9 @@ class ServerRequest extends Request implements ServerRequestInterface
         $this->serverParams = $serverParams ?: $_SERVER;
         $this->cookieParams = $cookieParams ?: $_COOKIE;
         $this->queryParams = $queryParams ?: $_GET;
+        $this->body = $body ?: RequestBody::createFromCgi();
         $this->bodyParams = $bodyParams ?: $_POST;
         $this->uploadFiles = UploadedFile::parseUploadedFiles($uploadFiles ?: $_FILES);
-        $this->body = $body ?: RequestBody::createFromCgi();
 
         $this->registerBaseBodyParsers();
 

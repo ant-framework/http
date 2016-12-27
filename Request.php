@@ -111,7 +111,7 @@ class Request extends Message implements RequestInterface
             ? new RequestBody(fopen('php://temp','r+'))
             : RequestBody::createFromString($bodyBuffer);
 
-        $request = new static($method, $uri, $headers, $body, $protocolVersion);
+        $request = new Request($method, $uri, $headers, $body, $protocolVersion);
         // 注册Body基础解析器
         $request->registerBaseBodyParsers();
         // 初始化请求对象

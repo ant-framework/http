@@ -6,6 +6,7 @@ use Psr\Http\Message\StreamInterface;
 use Ant\Http\Interfaces\ResponseInterface;
 
 /**
+ * Todo 响应分块
  * Class Response
  * @package Ant\Http
  */
