@@ -66,9 +66,9 @@ class Request extends Message implements RequestInterface
     /**
      * 客户端请求的类型
      *
-     * @var string|null
+     * @var string
      */
-    protected $acceptType = null;
+    protected $acceptType = 'text';
 
     /**
      * body是否使用过
@@ -606,14 +606,16 @@ class Request extends Message implements RequestInterface
      */
     public function getAcceptType()
     {
-        if(is_null($this->acceptType)){
+        // 检查客户端请求是否为特殊格式
+        if($this->acceptType == 'text'){
+            // 特殊格式
             $acceptTypes = [
                 'text/javascript'       =>  'jsonp',
                 'application/javascript'=>  'jsonp',
                 'application/json'      =>  'json',
+                'text/json'             =>  'json',
                 'text/xml'              =>  'xml',
                 'application/xml'       =>  'xml',
-                'text/html'             =>  'html',
             ];
 
             foreach($this->getHeader('accept') as $type){
@@ -624,7 +626,7 @@ class Request extends Message implements RequestInterface
             }
         }
 
-        return $this->acceptType ?: 'html';
+        return $this->acceptType;
     }
 
     /**

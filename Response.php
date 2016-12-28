@@ -12,6 +12,8 @@ use Ant\Http\Interfaces\ResponseInterface;
  */
 class Response extends Message implements ResponseInterface
 {
+    use BodyRenderer;
+
     const SWITCHING_PROTOCOLS = 101;
     const PROCESSING = 102;
     const OK = 200;

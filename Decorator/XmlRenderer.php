@@ -1,15 +1,17 @@
 <?php
-namespace Ant\Http\Message;
+namespace Ant\Http\Decorator;
 
-class XmlRenderer extends  Renderer
+use Psr\Http\Message\MessageInterface as PsrMessage;
+
+class XmlRenderer extends Renderer
 {
-    public $type = 'application/xml';
+    public $type = 'text/xml';
 
-    public function decorate()
+    public function decorate(PsrMessage $http)
     {
-        $this->httpMessage->getBody()->write($this->toXml());
+        $http->getBody()->write($this->toXml());
 
-        return $this->httpMessage->withHeader('Content-Type', $this->getType());
+        return $http->withHeader('Content-Type', $this->getType());
     }
 
     /**
@@ -33,31 +35,17 @@ class XmlRenderer extends  Renderer
      */
     protected function addChildToElement(\SimpleXMLElement $element, $data)
     {
-        if(!$this->checkType($data)){
-            $data = ['item' => $data];
+        if(!is_array($data) && !is_object($data)){
+            throw new \RuntimeException('Response content must be array or object');
         }
 
         foreach($data as $key => $val){
-            if(!is_string($val) && !is_int($val)){
+            if(is_array($val) || is_object($val)){
                 $childElement = $element->addChild($key);
                 $this->addChildToElement($childElement,$val);
             }else{
                 $element->addChild($key,$val);
             }
         }
-    }
-
-    /**
-     * 检查数据类型
-     *
-     * @return bool
-     */
-    protected function checkType($data)
-    {
-        if(is_array($data) || is_object($data)){
-            return true;
-        }
-
-        return false;
     }
 }

@@ -2,15 +2,8 @@
 namespace Ant\Http;
 
 use InvalidArgumentException;
-use Ant\Http\Message\XmlRenderer;
-use Ant\Http\Message\JsonRenderer;
-use Ant\Http\Message\FileRenderer;
-use Ant\Http\Message\HtmlRenderer;
-use Ant\Http\Message\JsonpRenderer;
 use Psr\Http\Message\StreamInterface;
-use Ant\Http\Interfaces\MessageInterface;
-use Ant\Http\Interfaces\RendererInterface;
-use Ant\Http\Exception\NotAcceptableException;
+use Psr\Http\Message\MessageInterface;
 
 /**
  * Class Message
@@ -43,17 +36,11 @@ abstract class Message implements MessageInterface
     protected $body = null;
 
     /**
-     * 装饰器列表
+     * 输出字符串
      *
-     * @var array
+     * @return string
      */
-    protected $renderer = [
-        'xml'   =>  XmlRenderer::class,
-        'file'  =>  FileRenderer::class,
-        'json'  =>  JsonRenderer::class,
-        'html'  =>  HtmlRenderer::class,
-        'jsonp' =>  JsonpRenderer::class,
-    ];
+    abstract public function __toString();
 
     /**
      * 获取HTTP协议版本
@@ -229,29 +216,6 @@ abstract class Message implements MessageInterface
 
         return $this->changeAttribute('body',$body);
     }
-
-    /**
-     * 选择装饰器
-     *
-     * @param $type
-     * @return RendererInterface
-     */
-    public function selectRenderer($type)
-    {
-        if(!is_string($type)){
-            throw new InvalidArgumentException('type must be a string');
-        }
-
-        if(!array_key_exists($type,$this->renderer)){
-            throw new NotAcceptableException('Decorative device does not exist');
-        }
-
-        $renderer = $this->renderer[$type];
-
-        return new $renderer($this);
-    }
-
-    //Todo 更加符合逻辑的body渲染
 
     /**
      * 设置对象不变性

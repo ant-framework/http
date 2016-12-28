@@ -31,5 +31,4 @@ class Body extends Stream
 
         return new static($stream);
     }
-
 }

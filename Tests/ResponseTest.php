@@ -2,6 +2,7 @@
 namespace Ant\Http\Test;
 
 use Ant\Http\Response;
+use Ant\Http\Stream;
 
 class ResponseTest extends \PHPUnit_Framework_TestCase
 {
@@ -84,5 +85,56 @@ EOT;
         $response = (new Response())->redirect('http://foobar.com');
         $this->assertEquals(303,$response->getStatusCode());
         $this->assertEquals('http://foobar.com',$response->getHeaderLine('Location'));
+    }
+
+
+    /**
+     * 测试Body装饰器
+     */
+    public function testHttpBodyRenderer()
+    {
+        $response = new Response();
+        $response->keepImmutability(false);
+
+        // 设置格式为Json
+        $response->setType('json')
+            ->setContent(['foo' => 'bar'])
+            ->decorate();
+
+        $this->assertEquals('{"foo":"bar"}',$response->getBody()->__toString());
+        $this->assertEquals('application/json; charset=utf-8',$response->getHeaderLine('content-type'));
+
+        // 设置格式为jsonp
+        $response->withBody(new Stream(fopen('php://temp','w+')))
+            ->setType('jsonp')
+            ->setContent(['foo' => 'bar'])
+            ->decorate();
+
+        $this->assertEquals('callback({"foo":"bar"});',$response->getBody()->__toString());
+        $this->assertEquals('application/javascript; charset=utf-8',$response->getHeaderLine('content-type'));
+
+        // 设置格式为xml
+        $response->withBody(new Stream(fopen('php://temp','w+')))
+            ->setType('xml')
+            ->setContent(['foo' => 'bar'])
+            ->decorate();
+
+        $backup = libxml_disable_entity_loader(true);
+        $result = simplexml_load_string($response->getBody()->__toString());
+        libxml_disable_entity_loader($backup);
+
+        $this->assertEquals('bar',$result->foo);
+        $this->assertEquals('text/xml; charset=utf-8',$response->getHeaderLine('content-type'));
+
+        // 测试格式为file
+        $response->withBody(new Stream(fopen('php://temp','w+')))
+            ->setType('file')
+            ->setContent("Test")
+            ->decorate();
+
+        $this->assertEquals('Test',$response->getBody()->__toString());
+        $this->assertEquals('application/octet-stream',$response->getHeaderLine('content-type'));
+        $this->assertEquals('attachment; filename="example.txt"',$response->getHeaderLine('content-disposition'));
+        $this->assertEquals('binary',$response->getHeaderLine('Content-Transfer-Encoding'));
     }
 }

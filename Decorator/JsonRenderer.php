@@ -1,14 +1,16 @@
 <?php
-namespace Ant\Http\Message;
+namespace Ant\Http\Decorator;
+
+use Psr\Http\Message\MessageInterface as PsrMessage;
 
 class JsonRenderer extends Renderer
 {
     public $type = 'application/json';
 
-    public function decorate()
+    public function decorate(PsrMessage $http)
     {
-        $this->httpMessage->getBody()->write($this->toJson());
-        return $this->httpMessage->withHeader('Content-Type', $this->getType());
+        $http->getBody()->write($this->toJson());
+        return $http->withHeader('Content-Type', $this->getType());
     }
 
     /**
