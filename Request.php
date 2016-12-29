@@ -83,7 +83,7 @@ class Request extends Message implements RequestInterface
      * @param string $receiveBuffer
      * @return static
      */
-    public static function createFromRequestStr($receiveBuffer)
+    final public static function createFromRequestStr($receiveBuffer)
     {
         if (!is_string($receiveBuffer)) {
             throw new \InvalidArgumentException('Request must be string');

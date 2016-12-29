@@ -7,7 +7,7 @@ use Ant\Http\Exception\NotAcceptableException;
 class RendererFactory
 {
     /**
-     * ×°ÊÎÆ÷ÁÐ±í
+     * è£…é¥°å™¨åˆ—è¡¨
      *
      * @var array
      */
@@ -21,7 +21,7 @@ class RendererFactory
     ];
 
     /**
-     * Ñ¡Ôñ×°ÊÎÆ÷
+     * é€‰æ‹©è£…é¥°å™¨
      *
      * @param $type
      * @return Renderer
