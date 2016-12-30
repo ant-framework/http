@@ -134,7 +134,7 @@ class Uri implements UriInterface
      * 指定连接方式
      *
      * @param string $scheme
-     * @return Uri
+     * @return UriInterface
      */
     public function withScheme($scheme)
     {
@@ -173,7 +173,7 @@ class Uri implements UriInterface
      *
      * @param string $user
      * @param null $password
-     * @return Uri
+     * @return UriInterface
      */
     public function withUserInfo($user, $password = null)
     {
@@ -198,7 +198,7 @@ class Uri implements UriInterface
      * 指定主机名
      *
      * @param string $host
-     * @return Uri
+     * @return UriInterface
      */
     public function withHost($host)
     {
@@ -230,7 +230,7 @@ class Uri implements UriInterface
      * 指定端口
      *
      * @param int|null $port
-     * @return Uri
+     * @return UriInterface
      */
     public function withPort($port)
     {
@@ -270,7 +270,7 @@ class Uri implements UriInterface
      * 指定Uri路径
      *
      * @param string $path
-     * @return Uri
+     * @return UriInterface
      */
     public function withPath($path)
     {
@@ -298,7 +298,7 @@ class Uri implements UriInterface
      * 指定query参数
      *
      * @param mixed
-     * @return static
+     * @return UriInterface
      * @throws \InvalidArgumentException for invalid query strings
      */
     public function withQuery($query)
@@ -331,7 +331,7 @@ class Uri implements UriInterface
      * 指定 # 后的参数
      *
      * @param string $fragment
-     * @return static
+     * @return UriInterface
      */
     public function withFragment($fragment)
     {

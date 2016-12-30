@@ -249,6 +249,21 @@ class Response extends Message implements ResponseInterface
     }
 
     /**
+     * 从Request中生成Response
+     *
+     * @param Request $request
+     * @return static
+     */
+    public static function prepare(Request $request)
+    {
+        $response = new static();
+        $response->keepImmutability(false);
+        $response->setType($request->getAcceptType());
+
+        return $response;
+    }
+
+    /**
      * @param int $code
      * @param array $header
      * @param StreamInterface|null $body

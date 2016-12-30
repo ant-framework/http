@@ -262,7 +262,7 @@ abstract class Message implements MessageInterface
      *
      * @param $attribute string
      * @param $value mixed
-     * @return self
+     * @return Request|Response
      */
     protected function changeAttribute($attribute,$value)
     {

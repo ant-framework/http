@@ -68,7 +68,7 @@ class Request extends Message implements RequestInterface
      *
      * @var string
      */
-    protected $acceptType = 'text';
+    protected $acceptType = null;
 
     /**
      * body是否使用过
@@ -76,6 +76,13 @@ class Request extends Message implements RequestInterface
      * @var bool
      */
     protected $usesBody = false;
+
+    /**
+     * 请求的路由
+     *
+     * @var string
+     */
+    protected $routeUri;
 
     /**
      * 通过Tcp输入流解析Http请求
@@ -402,15 +409,12 @@ class Request extends Message implements RequestInterface
      */
     public function getParsedBody()
     {
-        //解析成功直接返回解析结果
-        if(!empty($this->bodyParams)) {
+        //解析成功直接返回解析结果,如果解析后的参数为空,不允许进行第二次解析
+        if(!empty($this->bodyParams) || $this->usesBody) {
             return $this->bodyParams;
         }
 
-        //如果解析后的参数为空,不允许进行第二次解析
-        if($this->usesBody) {
-            return null;
-        }
+        $this->usesBody = true;
 
         if($contentType = $this->getContentType()) {
             //用自定义方法解析Body内容
@@ -421,7 +425,7 @@ class Request extends Message implements RequestInterface
                     $this->getBody()->__toString()
                 );
 
-                if (!(is_null($parsed) || is_object($parsed) || is_array($parsed))){
+                if (!(is_null($parsed) || is_object($parsed) || is_array($parsed))) {
                     throw new RuntimeException(
                         'Request body media type parser return value must be an array, an object, or null'
                     );
@@ -431,7 +435,6 @@ class Request extends Message implements RequestInterface
             }
         }
 
-        $this->usesBody = true;
         return null;
     }
 
@@ -573,30 +576,32 @@ class Request extends Message implements RequestInterface
      */
     public function getRequestRouteUri()
     {
-        //获取请求资源的路径
-        $requestScriptName = $this->getScriptName();
-        $requestScriptDir = dirname($requestScriptName);
-        $requestUri = $this->getUri()->getPath();
+        if(empty($this->routeUri)){
+            //获取请求资源的路径
+            $requestScriptName = $this->getScriptName();
+            $requestScriptDir = dirname($requestScriptName);
+            $this->routeUri = $this->getUri()->getPath();
 
-        //获取基础路径
-        if (stripos($requestUri, $requestScriptName) === 0) {
-            $basePath = $requestScriptName;
-        } elseif ($requestScriptDir !== '/' && stripos($requestUri, $requestScriptDir) === 0) {
-            $basePath = $requestScriptDir;
+            //获取基础路径
+            if (stripos($this->routeUri, $requestScriptName) === 0) {
+                $basePath = $requestScriptName;
+            } elseif ($requestScriptDir !== '/' && stripos($this->routeUri, $requestScriptDir) === 0) {
+                $basePath = $requestScriptDir;
+            }
+
+            if(isset($basePath)) {
+                //获取请求的路径
+                $this->routeUri = '/'.trim(substr($this->routeUri, strlen($basePath)), '/');
+            }
+
+            //获取客户端需要的资源格式
+            if(false !== ($pos = strrpos($this->routeUri,'.'))){
+                $this->acceptType = substr($this->routeUri, $pos + 1);
+                $this->routeUri = strstr($this->routeUri, '.', true);
+            }
         }
 
-        if(isset($basePath)) {
-            //获取请求的路径
-            $requestUri = '/'.trim(substr($requestUri, strlen($basePath)), '/');
-        }
-
-        //获取客户端需要的资源格式
-        if(false !== ($pos = strrpos($requestUri,'.'))){
-            $this->acceptType = substr($requestUri, $pos + 1);
-            $requestUri = strstr($requestUri, '.', true);
-        }
-
-        return $requestUri;
+        return $this->routeUri;
     }
 
     /**
@@ -606,8 +611,8 @@ class Request extends Message implements RequestInterface
      */
     public function getAcceptType()
     {
-        // 检查客户端请求是否为特殊格式
-        if($this->acceptType == 'text'){
+        // 获取客户端请求的格式
+        if(is_null($this->acceptType)) {
             // 特殊格式
             $acceptTypes = [
                 'text/javascript'       =>  'jsonp',
@@ -618,11 +623,16 @@ class Request extends Message implements RequestInterface
                 'application/xml'       =>  'xml',
             ];
 
-            foreach($this->getHeader('accept') as $type){
-                if(array_key_exists($type,$acceptTypes)){
+            foreach($this->getHeader('accept') as $type) {
+                if(array_key_exists($type,$acceptTypes)) {
                     $this->acceptType = $acceptTypes[$type];
                     break;
                 }
+            }
+
+            // 默认为text格式
+            if(is_null($this->acceptType)) {
+                $this->acceptType = 'text';
             }
         }
 
@@ -667,10 +677,10 @@ class Request extends Message implements RequestInterface
             return $data;
         };
 
-        $this->bodyParsers['application/json'] = $jsonParse;
+        $this->bodyParsers['text/xml'] = $xmlParse;
         $this->bodyParsers['text/json'] = $jsonParse;
         $this->bodyParsers['application/xml'] = $xmlParse;
-        $this->bodyParsers['text/xml'] = $xmlParse;
+        $this->bodyParsers['application/json'] = $jsonParse;
 
         $this->bodyParsers['application/x-www-form-urlencoded'] = function($input) {
             parse_str($input,$data);
