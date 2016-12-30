@@ -5,6 +5,8 @@ use Psr\Http\Message\MessageInterface as PsrMessage;
 
 class TextRenderer extends Renderer
 {
+    public $type = 'text/html';
+
     public function decorate(PsrMessage $http)
     {
         if(!is_string($this->package) && !is_integer($this->package)){

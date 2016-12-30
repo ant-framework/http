@@ -81,6 +81,7 @@ class ServerRequest extends Request implements ServerRequestInterface
             : '/';
 
         $this->uri = Uri::createFromEnvironment($this->serverParams);
+        $this->parseRequestPath();
     }
 
     /**

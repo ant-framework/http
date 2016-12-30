@@ -10,7 +10,7 @@ abstract class Renderer
      *
      * @var string
      */
-    public $type = 'text/html';
+    public $type = null;
 
     /**
      * 响应编码

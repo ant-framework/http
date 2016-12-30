@@ -258,7 +258,14 @@ class Response extends Message implements ResponseInterface
     {
         $response = new static();
         $response->keepImmutability(false);
-        $response->setType($request->getAcceptType());
+
+        try{
+            // 尝试使用客户端请求的格式作为响应body格式
+            $response->setType($request->getAcceptType());
+        }catch(\Exception $e){
+            // 默认使用text格式
+            $response->setType('text');
+        }
 
         return $response;
     }

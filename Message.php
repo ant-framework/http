@@ -130,7 +130,7 @@ abstract class Message implements MessageInterface
      */
     public function withHeader($name, $value)
     {
-        if(!is_array($value) && !is_string($value)){
+        if(!is_array($value) && !is_string($value) && !is_int($value)){
             throw new InvalidArgumentException('Header must be string or array');
         }
 

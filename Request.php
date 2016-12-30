@@ -29,6 +29,20 @@ class Request extends Message implements RequestInterface
     protected $uri = null;
 
     /**
+     * 请求的路由
+     *
+     * @var string
+     */
+    protected $routeUri = null;
+
+    /**
+     * 客户端请求的类型
+     *
+     * @var string
+     */
+    protected $acceptType = null;
+
+    /**
      * cookie参数
      *
      * @var array
@@ -64,25 +78,11 @@ class Request extends Message implements RequestInterface
     protected $bodyParsers = [];
 
     /**
-     * 客户端请求的类型
-     *
-     * @var string
-     */
-    protected $acceptType = null;
-
-    /**
      * body是否使用过
      *
      * @var bool
      */
     protected $usesBody = false;
-
-    /**
-     * 请求的路由
-     *
-     * @var string
-     */
-    protected $routeUri;
 
     /**
      * 通过Tcp输入流解析Http请求
@@ -121,8 +121,8 @@ class Request extends Message implements RequestInterface
         $request = new Request($method, $uri, $headers, $body, $protocolVersion);
         // 注册Body基础解析器
         $request->registerBaseBodyParsers();
-        // 初始化请求对象
-        $request->initialize();
+        // 解析请求资源的信息
+        $request->parseRequestPath();
 
         return $request;
     }
@@ -142,6 +142,10 @@ class Request extends Message implements RequestInterface
         $this->headers = $headers;
         $this->body = $body ?: new Body();
         $this->protocolVersion = $protocolVersion;
+
+        //解析GET与Cookie参数
+        parse_str($this->uri->getQuery(),$this->queryParams);
+        parse_str(str_replace([';','; '], '&', $this->getHeaderLine('Cookie')), $this->cookieParams);
     }
 
     /**
@@ -269,7 +273,7 @@ class Request extends Message implements RequestInterface
         $fragment = isset($data['fragment']) ? $data['fragment'] : '';
 
         $uri = $uri->withPath($path)->withQuery($query)->withFragment($fragment);
-        parse_str($query,$this->queryParams);
+        parse_str($uri->getQuery(),$this->queryParams);
 
         return $this->withUri($uri,true);
     }
@@ -295,6 +299,7 @@ class Request extends Message implements RequestInterface
     {
         $result = $this->changeAttribute('uri',$uri);
         parse_str($uri->getQuery(),$result->queryParams);
+        $result->parseRequestPath();
 
         //如果开启host保护,原Host为空且新Uri包含Host时才更新
         if(!$preserveHost){
@@ -330,7 +335,7 @@ class Request extends Message implements RequestInterface
     {
         $result = $this->changeAttribute('queryParams',$query);
         //修改查询参数
-        $result->uri = $result->getUri()->withQuery($query);
+        $result->uri = $result->uri->withQuery($query);
 
         return $result;
     }
@@ -576,31 +581,6 @@ class Request extends Message implements RequestInterface
      */
     public function getRequestRouteUri()
     {
-        if(empty($this->routeUri)){
-            //获取请求资源的路径
-            $requestScriptName = $this->getScriptName();
-            $requestScriptDir = dirname($requestScriptName);
-            $this->routeUri = $this->getUri()->getPath();
-
-            //获取基础路径
-            if (stripos($this->routeUri, $requestScriptName) === 0) {
-                $basePath = $requestScriptName;
-            } elseif ($requestScriptDir !== '/' && stripos($this->routeUri, $requestScriptDir) === 0) {
-                $basePath = $requestScriptDir;
-            }
-
-            if(isset($basePath)) {
-                //获取请求的路径
-                $this->routeUri = '/'.trim(substr($this->routeUri, strlen($basePath)), '/');
-            }
-
-            //获取客户端需要的资源格式
-            if(false !== ($pos = strrpos($this->routeUri,'.'))){
-                $this->acceptType = substr($this->routeUri, $pos + 1);
-                $this->routeUri = strstr($this->routeUri, '.', true);
-            }
-        }
-
         return $this->routeUri;
     }
 
@@ -611,31 +591,6 @@ class Request extends Message implements RequestInterface
      */
     public function getAcceptType()
     {
-        // 获取客户端请求的格式
-        if(is_null($this->acceptType)) {
-            // 特殊格式
-            $acceptTypes = [
-                'text/javascript'       =>  'jsonp',
-                'application/javascript'=>  'jsonp',
-                'application/json'      =>  'json',
-                'text/json'             =>  'json',
-                'text/xml'              =>  'xml',
-                'application/xml'       =>  'xml',
-            ];
-
-            foreach($this->getHeader('accept') as $type) {
-                if(array_key_exists($type,$acceptTypes)) {
-                    $this->acceptType = $acceptTypes[$type];
-                    break;
-                }
-            }
-
-            // 默认为text格式
-            if(is_null($this->acceptType)) {
-                $this->acceptType = 'text';
-            }
-        }
-
         return $this->acceptType;
     }
 
@@ -731,13 +686,57 @@ class Request extends Message implements RequestInterface
     }
 
     /**
-     * 初始化请求参数
+     * 解析请求的资源
      */
-    protected function initialize()
+    protected function parseRequestPath()
     {
-        //解析GET与Cookie参数
-        parse_str($this->uri->getQuery(),$this->queryParams);
-        parse_str(str_replace([';','; '], '&', $this->getHeaderLine('Cookie')), $this->cookieParams);
+        //获取请求资源的路径
+        $requestScriptName = $this->getScriptName();
+        $requestScriptDir = dirname($requestScriptName);
+        $this->routeUri = $this->getUri()->getPath();
+
+        //获取基础路径
+        if (stripos($this->routeUri, $requestScriptName) === 0) {
+            $basePath = $requestScriptName;
+        } elseif ($requestScriptDir !== '/' && stripos($this->routeUri, $requestScriptDir) === 0) {
+            $basePath = $requestScriptDir;
+        }
+
+        if(isset($basePath)) {
+            //获取请求的路径
+            $this->routeUri = '/'.trim(substr($this->routeUri, strlen($basePath)), '/');
+        }
+
+        //获取客户端需要的资源格式
+        if(false !== ($pos = strrpos($this->routeUri,'.'))){
+            $this->acceptType = substr($this->routeUri, $pos + 1);
+            $this->routeUri = strstr($this->routeUri, '.', true);
+        }
+
+        // 获取客户端请求的格式
+        if(is_null($this->acceptType)) {
+            // 特殊格式
+            $acceptTypes = [
+                'text/javascript'       =>  'jsonp',
+                'application/javascript'=>  'jsonp',
+                'application/json'      =>  'json',
+                'text/json'             =>  'json',
+                'text/xml'              =>  'xml',
+                'application/xml'       =>  'xml',
+            ];
+
+            foreach($this->getHeader('accept') as $type) {
+                if(array_key_exists($type,$acceptTypes)) {
+                    $this->acceptType = $acceptTypes[$type];
+                    break;
+                }
+            }
+
+            // 默认为text格式
+            if(is_null($this->acceptType)) {
+                $this->acceptType = 'text';
+            }
+        }
     }
 
     /**
