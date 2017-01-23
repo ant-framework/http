@@ -662,7 +662,7 @@ class Request extends Message implements RequestInterface
                     list($headerName, $headerData) = explode(":", $item, 2);
                     $headerName = trim(strtolower($headerName));
                     // 将参数名与值进行配对
-                    if($headerName == 'content-disposition'){
+                    if($headerName == 'content-disposition') {
                         if (preg_match('/name="(.*?)"; filename="(.*?)"$/', $headerData, $match)) {
                             $file = new Stream(fopen('php://temp','w'));
                             $file->write($bufferBody);
@@ -681,6 +681,7 @@ class Request extends Message implements RequestInterface
                 }
             }
 
+            
             return $data;
         };
     }
@@ -691,30 +692,18 @@ class Request extends Message implements RequestInterface
     protected function parseRequestPath()
     {
         //获取请求资源的路径
-        $requestScriptName = $this->getScriptName();
-        $requestScriptDir = dirname($requestScriptName);
         $this->routeUri = $this->getUri()->getPath();
 
-        //获取基础路径
-        if (stripos($this->routeUri, $requestScriptName) === 0) {
-            $basePath = $requestScriptName;
-        } elseif ($requestScriptDir !== '/' && stripos($this->routeUri, $requestScriptDir) === 0) {
-            $basePath = $requestScriptDir;
-        }
-
-        if(isset($basePath)) {
-            //获取请求的路径
-            $this->routeUri = '/'.trim(substr($this->routeUri, strlen($basePath)), '/');
-        }
-
         //获取客户端需要的资源格式
-        if(false !== ($pos = strrpos($this->routeUri,'.'))){
+        if(false !== ($pos = strrpos($this->routeUri,'.'))) {
             $this->acceptType = substr($this->routeUri, $pos + 1);
             $this->routeUri = strstr($this->routeUri, '.', true);
         }
 
-        // 获取客户端请求的格式
         if(is_null($this->acceptType)) {
+            // 默认为text格式
+            $this->acceptType = 'text';
+
             // 特殊格式
             $acceptTypes = [
                 'text/javascript'       =>  'jsonp',
@@ -731,11 +720,6 @@ class Request extends Message implements RequestInterface
                     break;
                 }
             }
-
-            // 默认为text格式
-            if(is_null($this->acceptType)) {
-                $this->acceptType = 'text';
-            }
         }
     }
 
@@ -747,14 +731,15 @@ class Request extends Message implements RequestInterface
     protected function getScriptName()
     {
         // Todo::获取网站根目录路径
-        //追踪栈
-        $backtrace = debug_backtrace();
-        //取得初始脚本路径
-        $scriptPath = $backtrace[count($backtrace)-1]['file'];
-        //获取脚本在网站根目录下的路径
-        $intersect = array_intersect(explode('/',$this->getUri()->getPath()),explode(DIRECTORY_SEPARATOR,$scriptPath));
-        $intersect[] = basename($scriptPath);
-
-        return '/'.implode('/',$intersect);
+//        //追踪栈
+//        $backtrace = debug_backtrace();
+//        //取得初始脚本路径
+//        $scriptPath = $backtrace[count($backtrace)-1]['file'];
+//        //获取脚本在网站根目录下的路径
+//        $intersect = array_intersect(explode('/',$this->getUri()->getPath()),explode(DIRECTORY_SEPARATOR,$scriptPath));
+//        $intersect[] = basename($scriptPath);
+//
+//        return '/'.implode('/',$intersect);
+        return "";
     }
 }
