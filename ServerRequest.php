@@ -179,14 +179,6 @@ class ServerRequest extends Request implements ServerRequestInterface
     }
 
     /**
-     * @return string
-     */
-    protected function getScriptName()
-    {
-        return $this->getServerParam('SCRIPT_NAME') ?: parent::getScriptName();
-    }
-
-    /**
      * 获取GET参数
      *
      * @param null $key
@@ -231,5 +223,59 @@ class ServerRequest extends Request implements ServerRequestInterface
         }
 
         return isset($cookie[$key]) ? $cookie[$key] : null;
+    }
+
+    /**
+     * 解析请求的资源
+     */
+    protected function parseRequestPath()
+    {
+        //获取请求资源的路径
+        $requestScriptName = $this->getServerParam('SCRIPT_NAME');
+        $requestScriptDir = dirname($requestScriptName);
+        $this->routeUri = $this->getUri()->getPath();
+
+        //获取基础路径
+        if (stripos($this->routeUri, $requestScriptName) === 0) {
+            $basePath = $requestScriptName;
+        } elseif ($requestScriptDir !== '/' && stripos($this->routeUri, $requestScriptDir) === 0) {
+            $basePath = $requestScriptDir;
+        }
+
+        if(isset($basePath)) {
+            //获取请求的路径
+            $this->routeUri = '/'.trim(substr($this->routeUri, strlen($basePath)), '/');
+        }
+
+        //获取客户端需要的资源格式
+        if(false !== ($pos = strrpos($this->routeUri,'.'))){
+            $this->acceptType = substr($this->routeUri, $pos + 1);
+            $this->routeUri = strstr($this->routeUri, '.', true);
+        }
+
+        // 获取客户端请求的格式
+        if(is_null($this->acceptType)) {
+            // 特殊格式
+            $acceptTypes = [
+                'text/javascript'       =>  'jsonp',
+                'application/javascript'=>  'jsonp',
+                'application/json'      =>  'json',
+                'text/json'             =>  'json',
+                'text/xml'              =>  'xml',
+                'application/xml'       =>  'xml',
+            ];
+
+            foreach($this->getHeader('accept') as $type) {
+                if(array_key_exists($type,$acceptTypes)) {
+                    $this->acceptType = $acceptTypes[$type];
+                    break;
+                }
+            }
+
+            // 默认为text格式
+            if(is_null($this->acceptType)) {
+                $this->acceptType = 'text';
+            }
+        }
     }
 }

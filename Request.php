@@ -681,6 +681,7 @@ class Request extends Message implements RequestInterface
                 }
             }
 
+            
             return $data;
         };
     }
@@ -691,9 +692,9 @@ class Request extends Message implements RequestInterface
     protected function parseRequestPath()
     {
         //获取请求资源的路径
+        $this->routeUri = $this->getUri()->getPath();
         $requestScriptName = $this->getScriptName();
         $requestScriptDir = dirname($requestScriptName);
-        $this->routeUri = $this->getUri()->getPath();
 
         //获取基础路径
         if (stripos($this->routeUri, $requestScriptName) === 0) {
@@ -715,6 +716,9 @@ class Request extends Message implements RequestInterface
 
         // 获取客户端请求的格式
         if (is_null($this->acceptType)) {
+            // 默认为text格式
+            $this->acceptType = 'text';
+
             // 特殊格式
             $acceptTypes = [
                 'text/javascript'       =>  'jsonp',
