@@ -84,15 +84,15 @@ class Uri implements UriInterface
         $userInfo = $username . ($password ? ':' . $password : '');
 
         //获取主机地址
-        if(isset($env['HTTP_HOST'])){
-            if(strpos($env['HTTP_HOST'],':')){
+        if (isset($env['HTTP_HOST'])) {
+            if (strpos($env['HTTP_HOST'],':')) {
                 list($host,$port) = explode(':',$env['HTTP_HOST'],2);
                 $port = (int)$port;
-            }else{
+            } else {
                 $host = $env['HTTP_HOST'];
                 $port = null;
             }
-        }else{
+        } else {
             $host = isset($env['SERVER_NAME'])
                 ? $env['SERVER_NAME']
                 : (isset($env['SERVER_ADDR']) ? $env['SERVER_ADDR'] : null);
@@ -115,7 +115,7 @@ class Uri implements UriInterface
      */
     public function __construct($uri = '')
     {
-        foreach(parse_url($uri) as $key => $value){
+        foreach (parse_url($uri) as $key => $value) {
             $this->$key = $value;
         }
     }
@@ -215,11 +215,11 @@ class Uri implements UriInterface
      */
     public function getPort()
     {
-        if($this->port){
+        if ($this->port) {
             return $this->port;
         }
 
-        if(!$this->scheme){
+        if (!$this->scheme) {
             return null;
         }
 
@@ -303,7 +303,7 @@ class Uri implements UriInterface
      */
     public function withQuery($query)
     {
-        if(is_array($query)){
+        if (is_array($query)) {
             $query = http_build_query($query,'','&',PHP_QUERY_RFC3986);
         }
 

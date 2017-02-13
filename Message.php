@@ -60,7 +60,7 @@ abstract class Message implements MessageInterface
      */
     public function withProtocolVersion($version)
     {
-        if(!is_string($version) && !is_int($version) && !is_double($version)){
+        if (!is_string($version) && !is_int($version) && !is_double($version)) {
             throw new InvalidArgumentException('Input version error');
         }
 
@@ -101,7 +101,7 @@ abstract class Message implements MessageInterface
     {
         $name = strtolower($name);
 
-        if(!$this->hasHeader($name)){
+        if (!$this->hasHeader($name)) {
             return [];
         }
 
@@ -130,7 +130,7 @@ abstract class Message implements MessageInterface
      */
     public function withHeader($name, $value)
     {
-        if(!is_array($value) && !is_string($value) && !is_int($value)){
+        if (!is_array($value) && !is_string($value) && !is_int($value)) {
             throw new InvalidArgumentException('Header must be string or array');
         }
 
@@ -146,7 +146,7 @@ abstract class Message implements MessageInterface
      */
     public function withAddedHeader($name, $value)
     {
-        if($this->hasHeader($name)){
+        if ($this->hasHeader($name)) {
             $value = (is_array($value))
                 ? array_merge($this->getHeader($name),$value)
                 : implode(',',$this->getHeader($name)).','.$value;
@@ -180,12 +180,12 @@ abstract class Message implements MessageInterface
      */
     public function addHeaderFromIterator($iterator)
     {
-        if(!$iterator instanceof \Iterator && !is_array($iterator)){
+        if (!$iterator instanceof \Iterator && !is_array($iterator)) {
             throw new \RuntimeException('Arguments must be an iterator');
         }
 
         $self = $this;
-        foreach($iterator as $name => $value){
+        foreach ($iterator as $name => $value) {
             $self = $self->withAddedHeader($name,$value);
         }
 
@@ -226,8 +226,9 @@ abstract class Message implements MessageInterface
      * 去改变那个相同的类的属性，通过这种方式保证原有数据不被覆盖
      * 本人出于损耗与易用性，给这个保持不变性加上了一个开关
      *
-     * @param bool|false $enable
+     * @param bool|true $enable
      * @return self
+     * @see http://www.php-fig.org/psr/psr-7/meta/
      */
     public function keepImmutability($enable = true)
     {
@@ -245,7 +246,7 @@ abstract class Message implements MessageInterface
     {
         $result = [];
 
-        foreach($this->getHeaders() as $headerName => $headerValue){
+        foreach ($this->getHeaders() as $headerName => $headerValue) {
             if (is_array($headerValue)) {
                 $headerValue = implode(',', $headerValue);
             }
@@ -262,21 +263,21 @@ abstract class Message implements MessageInterface
      *
      * @param $attribute string
      * @param $value mixed
-     * @return Request|Response
+     * @return object
      */
     protected function changeAttribute($attribute,$value)
     {
-        $result = $this->immutability ? clone $this : $this;
-        if(is_array($attribute)){
+        $instance = $this->immutability ? clone $this : $this;
+        if (is_array($attribute)) {
             list($array,$key) = $attribute;
 
             // 兼容7以下
-            $array = &$result->$array;
+            $array = &$instance->$array;
             $array[$key] = $value;
-        }else{
-            $result->$attribute = $value;
+        } else {
+            $instance->$attribute = $value;
         }
 
-        return $result;
+        return $instance;
     }
 }

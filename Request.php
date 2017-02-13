@@ -156,20 +156,20 @@ class Request extends Message implements RequestInterface
      */
     public function __toString()
     {
-        if(!$this->hasHeader('host')){
-            if(!$host = $this->getUri()->getHost()){
+        if (!$this->hasHeader('host')) {
+            if (!$host = $this->getUri()->getHost()) {
                 // 请求的host不能为空
                 throw new RuntimeException('Requested host cannot be empty');
             }
             $this->headers['host'] = $host;
         }
 
-        if($cookie = $this->getCookieParams()){
+        if ($cookie = $this->getCookieParams()) {
             //设置Cookie
             $this->headers['cookie'] = str_replace('&','; ',http_build_query($this->getCookieParams()));
         }
 
-        if($size = $this->getBody()->getSize()){
+        if ($size = $this->getBody()->getSize()) {
             //设置Body长度
             $this->headers['content-length'] = [$size];
         }
@@ -203,10 +203,8 @@ class Request extends Message implements RequestInterface
         }
 
         //当请求方式为Post时,检查是否为表单提交,跟请求重写
-        if ($this->method == 'POST') {
-            if($customMethod = $this->getBodyParam('_method')){
-                $method = $customMethod;
-            }
+        if ($this->method == 'POST' && $customMethod = $this->getBodyParam('_method')) {
+            $method = $customMethod;
         }
 
         return $method;
@@ -261,7 +259,7 @@ class Request extends Message implements RequestInterface
      */
     public function withRequestTarget($requestTarget)
     {
-        if(!is_string($requestTarget)){
+        if (!is_string($requestTarget)) {
             throw new InvalidArgumentException('The request target must be a string');
         }
 
@@ -302,9 +300,9 @@ class Request extends Message implements RequestInterface
         $result->parseRequestPath();
 
         //如果开启host保护,原Host为空且新Uri包含Host时才更新
-        if(!$preserveHost){
+        if (!$preserveHost) {
             $host = explode(',',$uri->getHost());
-        }elseif((!$this->hasHeader('host') || empty($this->getHeaderLine('host'))) && $uri->getHost() !== ''){
+        } elseif ((!$this->hasHeader('host') || empty($this->getHeaderLine('host'))) && $uri->getHost() !== '') {
             $host = explode(',',$uri->getHost());
         }
 
@@ -415,15 +413,15 @@ class Request extends Message implements RequestInterface
     public function getParsedBody()
     {
         //解析成功直接返回解析结果,如果解析后的参数为空,不允许进行第二次解析
-        if(!empty($this->bodyParams) || $this->usesBody) {
+        if (!empty($this->bodyParams) || $this->usesBody) {
             return $this->bodyParams;
         }
 
         $this->usesBody = true;
 
-        if($contentType = $this->getContentType()) {
+        if ($contentType = $this->getContentType()) {
             //用自定义方法解析Body内容
-            if($this->body->getSize() !== 0 && isset($this->bodyParsers[$contentType])) {
+            if ($this->body->getSize() !== 0 && isset($this->bodyParsers[$contentType])) {
                 //调用body解析函数
                 $parsed = call_user_func(
                     $this->bodyParsers[$contentType],
@@ -528,15 +526,15 @@ class Request extends Message implements RequestInterface
      */
     public function getBodyParam($key = null)
     {
-        if(is_null($key)){
+        if (is_null($key)) {
             return $this->getParsedBody();
         }
 
         $params = $this->getParsedBody();
 
-        if(is_array($params) && array_key_exists($key,$params)){
+        if (is_array($params) && array_key_exists($key,$params)) {
             return $params[$key];
-        }elseif (is_object($params) && property_exists($params, $key)){
+        } elseif (is_object($params) && property_exists($params, $key)) {
             return $params->$key;
         }
 
@@ -602,7 +600,7 @@ class Request extends Message implements RequestInterface
      */
     public function setBodyParsers($subtype,$parsers)
     {
-        if(!is_callable($parsers)){
+        if (!is_callable($parsers)) {
             throw new InvalidArgumentException('Body parsers must be a callable');
         }
 
@@ -615,7 +613,7 @@ class Request extends Message implements RequestInterface
      */
     protected function registerBaseBodyParsers()
     {
-        $jsonParse = function($input) {
+        $jsonParse = function ($input) {
             $data = json_decode($input, true);
 
             if ($data === null && json_last_error() !== JSON_ERROR_NONE) {
@@ -625,7 +623,7 @@ class Request extends Message implements RequestInterface
             return $data;
         };
 
-        $xmlParse = function($input) {
+        $xmlParse = function ($input) {
             $backup = libxml_disable_entity_loader(true);
             $data = simplexml_load_string($input);
             libxml_disable_entity_loader($backup);
@@ -637,11 +635,13 @@ class Request extends Message implements RequestInterface
         $this->bodyParsers['application/xml'] = $xmlParse;
         $this->bodyParsers['application/json'] = $jsonParse;
 
+        // 解析Url encode格式
         $this->bodyParsers['application/x-www-form-urlencoded'] = function($input) {
             parse_str($input,$data);
             return $data;
         };
 
+        // 解析表单数据
         $this->bodyParsers['multipart/form-data'] = function ($input) {
             if(!preg_match('/boundary="?(\S+)"?/', $this->getHeaderLine('content-type'), $match)){
                 return null;
@@ -651,8 +651,8 @@ class Request extends Message implements RequestInterface
             $bodyBoundary = '--' . $match[1] . "\r\n";
             // 将最后一行分界符剔除
             $body = substr($input, 0 ,$this->getBody()->getSize() - (strlen($bodyBoundary) + 4));
-            foreach(explode($bodyBoundary,$body) as $buffer){
-                if($buffer == ''){
+            foreach (explode($bodyBoundary,$body) as $buffer) {
+                if ($buffer == '') {
                     continue;
                 }
                 // 将Body头信息跟内容拆分
@@ -662,7 +662,7 @@ class Request extends Message implements RequestInterface
                     list($headerName, $headerData) = explode(":", $item, 2);
                     $headerName = trim(strtolower($headerName));
                     // 将参数名与值进行配对
-                    if($headerName == 'content-disposition'){
+                    if ($headerName == 'content-disposition') {
                         if (preg_match('/name="(.*?)"; filename="(.*?)"$/', $headerData, $match)) {
                             $file = new Stream(fopen('php://temp','w'));
                             $file->write($bufferBody);
@@ -674,7 +674,7 @@ class Request extends Message implements RequestInterface
                                 'size'      => $file->getSize()
                             ]);
                             $uploadedFiles[$match[1]] = $file;
-                        }elseif(preg_match('/name="(.*?)"$/', $headerData, $match)) {
+                        } elseif(preg_match('/name="(.*?)"$/', $headerData, $match)) {
                             $data[$match[1]] = $bufferBody;
                         }
                     }
@@ -702,19 +702,19 @@ class Request extends Message implements RequestInterface
             $basePath = $requestScriptDir;
         }
 
-        if(isset($basePath)) {
+        if (isset($basePath)) {
             //获取请求的路径
             $this->routeUri = '/'.trim(substr($this->routeUri, strlen($basePath)), '/');
         }
 
         //获取客户端需要的资源格式
-        if(false !== ($pos = strrpos($this->routeUri,'.'))){
+        if (false !== ($pos = strrpos($this->routeUri,'.'))) {
             $this->acceptType = substr($this->routeUri, $pos + 1);
             $this->routeUri = strstr($this->routeUri, '.', true);
         }
 
         // 获取客户端请求的格式
-        if(is_null($this->acceptType)) {
+        if (is_null($this->acceptType)) {
             // 特殊格式
             $acceptTypes = [
                 'text/javascript'       =>  'jsonp',
@@ -725,15 +725,15 @@ class Request extends Message implements RequestInterface
                 'application/xml'       =>  'xml',
             ];
 
-            foreach($this->getHeader('accept') as $type) {
-                if(array_key_exists($type,$acceptTypes)) {
+            foreach ($this->getHeader('accept') as $type) {
+                if (array_key_exists($type,$acceptTypes)) {
                     $this->acceptType = $acceptTypes[$type];
                     break;
                 }
             }
 
             // 默认为text格式
-            if(is_null($this->acceptType)) {
+            if (is_null($this->acceptType)) {
                 $this->acceptType = 'text';
             }
         }
@@ -747,14 +747,15 @@ class Request extends Message implements RequestInterface
     protected function getScriptName()
     {
         // Todo::获取网站根目录路径
-        //追踪栈
-        $backtrace = debug_backtrace();
-        //取得初始脚本路径
-        $scriptPath = $backtrace[count($backtrace)-1]['file'];
-        //获取脚本在网站根目录下的路径
-        $intersect = array_intersect(explode('/',$this->getUri()->getPath()),explode(DIRECTORY_SEPARATOR,$scriptPath));
-        $intersect[] = basename($scriptPath);
-
-        return '/'.implode('/',$intersect);
+//        //追踪栈
+//        $backtrace = debug_backtrace();
+//        //取得初始脚本路径
+//        $scriptPath = $backtrace[count($backtrace)-1]['file'];
+//        //获取脚本在网站根目录下的路径
+//        $intersect = array_intersect(explode('/',$this->getUri()->getPath()),explode(DIRECTORY_SEPARATOR,$scriptPath));
+//        $intersect[] = basename($scriptPath);
+//
+//        return '/'.implode('/',$intersect);
+        return "";
     }
 }

@@ -32,18 +32,18 @@ class UploadedFile implements UploadedFileInterface
     public static function parseUploadedFiles($uploadedFiles)
     {
         $parsed = [];
-        foreach($uploadedFiles as $field => $uploadedFile){
-            if(!isset($uploadedFile['error'])){
+        foreach ($uploadedFiles as $field => $uploadedFile) {
+            if (!isset($uploadedFile['error'])) {
                 continue;
             }
 
             $parsed[$field] = [];
-            if(is_array($uploadedFile['error'])){
+            if (is_array($uploadedFile['error'])) {
                 //详见手册 [PHP多文件上传]
                 $subArray = [];
                 $count = count($uploadedFile['error']);
                 $fileKey = array_keys($uploadedFile);
-                for($fileIdx = 0;$fileIdx < $count;$fileIdx++){
+                for ($fileIdx = 0;$fileIdx < $count;$fileIdx++) {
                     foreach($fileKey as $key){
                         $subArray[$fileIdx][$key] = $uploadedFile[$key][$fileIdx];
                     }
@@ -64,8 +64,8 @@ class UploadedFile implements UploadedFileInterface
     public function __construct($file)
     {
         //在临时文件不存在时,尝试获取文件流
-        if(!isset($file['tmp_name'])){
-            if(!isset($file['stream']) && !$file['stream'] instanceof StreamInterface){
+        if (!isset($file['tmp_name'])) {
+            if (!isset($file['stream']) && !$file['stream'] instanceof StreamInterface) {
                 throw new InvalidArgumentException('File is invalid or not upload file via POST');
             }
 
@@ -105,7 +105,7 @@ class UploadedFile implements UploadedFileInterface
      */
     public function moveTo($targetPath)
     {
-        if($this->moved){
+        if ($this->moved) {
             throw new RuntimeException('File was moved to other directory');
         }
 
@@ -114,8 +114,8 @@ class UploadedFile implements UploadedFileInterface
             throw new InvalidArgumentException('Upload target path is not writable');
         }
 
-        if($this->stream !== null){
-            if(!$targetIsStream){
+        if ($this->stream !== null) {
+            if (!$targetIsStream) {
                 //删除文件之后再写入
                 unlink($targetPath);
             }
@@ -131,7 +131,7 @@ class UploadedFile implements UploadedFileInterface
                 if (!unlink($this->file['tmp_name'])) {
                     throw new RuntimeException(sprintf('Error removing uploaded file %1s', $this->file['name']));
                 }
-            } elseif ($this->isCgi()) {
+            } elseif (substr(PHP_SAPI,0,3) === 'cgi') {
                 //处理post上传
                 if (!is_uploaded_file($this->file['tmp_name'])) {
                     throw new RuntimeException(sprintf('%1s is not a valid uploaded file', $this->file['name']));
@@ -186,15 +186,8 @@ class UploadedFile implements UploadedFileInterface
     /**
      * @return bool
      */
-    public function isError(){
+    public function isError()
+    {
         return $this->getError() !== UPLOAD_ERR_OK;
     }
-
-    /**
-     * @return bool
-     */
-    public function isCgi(){
-        return substr(PHP_SAPI,0,3) === 'cgi';
-    }
-
 }

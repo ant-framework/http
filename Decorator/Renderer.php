@@ -40,17 +40,17 @@ abstract class Renderer
     }
 
     /**
-     * 装饰包裹
-     *
-     * @return PsrMessage
-     */
-    abstract public function decorate(PsrMessage $http);
-
-    /**
      * @return string
      */
     public function getType()
     {
         return $this->type.'; charset='.$this->charset;
     }
+
+    /**
+     * 装饰包裹
+     *
+     * @return PsrMessage
+     */
+    abstract public function decorate(PsrMessage $http);
 }

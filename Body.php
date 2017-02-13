@@ -5,7 +5,7 @@ class Body extends Stream
 {
     public function __construct($stream = null)
     {
-        if(is_null($stream)){
+        if (is_null($stream)) {
             $stream = fopen('php://temp','w+');
         }
 
@@ -21,7 +21,7 @@ class Body extends Stream
      */
     public static function createFromString($data)
     {
-        if(!is_string($data)){
+        if (!is_string($data)) {
             throw new \InvalidArgumentException("Parameter must be a string");
         }
 

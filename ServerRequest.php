@@ -171,7 +171,7 @@ class ServerRequest extends Request implements ServerRequestInterface
     public function withoutAttribute($name)
     {
         $result = clone $this;
-        if(array_key_exists($name,$result->attributes)){
+        if (array_key_exists($name,$result->attributes)) {
             unset($result->attributes[$name]);
         }
 
@@ -195,7 +195,7 @@ class ServerRequest extends Request implements ServerRequestInterface
     public function get($key = null)
     {
         $get = $this->getQueryParams();
-        if($key === null){
+        if ($key === null) {
             return $get;
         }
 
@@ -210,7 +210,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      */
     public function post($key = null)
     {
-        if($this->serverParams['REQUEST_METHOD'] === 'POST'){
+        if ($this->serverParams['REQUEST_METHOD'] === 'POST') {
             return $this->getBodyParam($key);
         }
 

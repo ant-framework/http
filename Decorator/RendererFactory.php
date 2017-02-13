@@ -28,11 +28,11 @@ class RendererFactory
      */
     public static function create($type)
     {
-        if(!is_string($type)){
+        if (!is_string($type)) {
             throw new InvalidArgumentException('type must be a string');
         }
 
-        if(!array_key_exists($type,static::$renderer)){
+        if (!array_key_exists($type,static::$renderer)) {
             throw new NotAcceptableException('Decorative device does not exist');
         }
 

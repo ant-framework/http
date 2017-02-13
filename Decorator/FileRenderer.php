@@ -11,7 +11,7 @@ class FileRenderer extends Renderer
 
     public function decorate(PsrMessage $http)
     {
-        if(!is_string($this->package) && !is_integer($this->package)){
+        if (!is_string($this->package) && !is_integer($this->package)) {
             throw new \RuntimeException('Response content must be string');
         }
 
@@ -21,7 +21,7 @@ class FileRenderer extends Renderer
             'Content-Transfer-Encoding' => 'binary',
         ];
 
-        foreach($headers as $name => $value){
+        foreach ($headers as $name => $value) {
             $http = $http->withHeader($name,$value);
         }
 

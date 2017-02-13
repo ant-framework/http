@@ -67,7 +67,7 @@ trait BodyRenderer
     {
         $this->checkFilling();
 
-        if(!$this->renderer instanceof Renderer){
+        if (!$this->renderer instanceof Renderer) {
             throw new \UnexpectedValueException('Please select the appropriate renderer');
         }
 
@@ -81,7 +81,7 @@ trait BodyRenderer
     protected function checkFilling()
     {
         // 已被写入body
-        if($this->filling){
+        if ($this->filling) {
             throw new \RuntimeException('Body has been written');
         }
     }

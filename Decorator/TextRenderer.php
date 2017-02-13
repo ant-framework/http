@@ -9,7 +9,7 @@ class TextRenderer extends Renderer
 
     public function decorate(PsrMessage $http)
     {
-        if(!is_string($this->package) && !is_integer($this->package)){
+        if (!is_string($this->package) && !is_integer($this->package)) {
             throw new \RuntimeException('Response content must be string');
         }
 

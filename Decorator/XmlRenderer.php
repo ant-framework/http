@@ -35,15 +35,15 @@ class XmlRenderer extends Renderer
      */
     protected function addChildToElement(\SimpleXMLElement $element, $data)
     {
-        if(!is_array($data) && !is_object($data)){
+        if (!is_array($data) && !is_object($data)) {
             throw new \RuntimeException('Response content must be array or object');
         }
 
-        foreach($data as $key => $val){
-            if(is_array($val) || is_object($val)){
+        foreach ($data as $key => $val) {
+            if (is_array($val) || is_object($val)) {
                 $childElement = $element->addChild($key);
                 $this->addChildToElement($childElement,$val);
-            }else{
+            } else {
                 $element->addChild($key,$val);
             }
         }

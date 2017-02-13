@@ -202,14 +202,14 @@ class Response extends Message implements ResponseInterface
         foreach ($headerData as $content) {
             list($name, $value) = explode(':', $content, 2);
             //cookie的报头名可重复,所以单独写入cookie数组
-            if('set-cookie' != $name = strtolower($name)){
+            if ('set-cookie' != $name = strtolower($name)) {
                 $headers[$name] = explode(',',trim($value));
-            }else{
+            } else {
                 $tmp = explode(';',$value);
                 list($name,$value) = explode('=',array_shift($tmp));
                 $cookie['value'] = $value;
 
-                foreach($tmp as $item){
+                foreach ($tmp as $item) {
                     list($key,$value) = explode('=',$item);
                     $cookie[trim($key)] = trim($value);
                 }
@@ -259,10 +259,10 @@ class Response extends Message implements ResponseInterface
         $response = new static();
         $response->keepImmutability(false);
 
-        try{
+        try {
             // 尝试使用客户端请求的格式作为响应body格式
             $response->setType($request->getAcceptType());
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             // 默认使用text格式
             $response->setType('text');
         }
@@ -310,7 +310,7 @@ class Response extends Message implements ResponseInterface
      */
     public function withStatus($code, $reasonPhrase = '')
     {
-        if(!is_integer($code) || $code < 100 || $code > 599){
+        if (!is_integer($code) || $code < 100 || $code > 599) {
             throw new InvalidArgumentException('Invalid HTTP status code');
         }
 
@@ -326,7 +326,7 @@ class Response extends Message implements ResponseInterface
      */
     public function getReasonPhrase()
     {
-        if(empty($this->responsePhrase)){
+        if (empty($this->responsePhrase)) {
             $this->responsePhrase = isset($this->httpReasonPhrase[$this->code])
                 ? $this->httpReasonPhrase[$this->code]
                 : null;
@@ -341,7 +341,7 @@ class Response extends Message implements ResponseInterface
      */
     public function replaceCookie(array $cookies)
     {
-        foreach($cookies as $name => $args){
+        foreach ($cookies as $name => $args) {
             $this->setCookie($name,$args);
         }
 
@@ -517,7 +517,7 @@ class Response extends Message implements ResponseInterface
     protected function getCookieHeader()
     {
         $result = [];
-        foreach($this->getCookies() as $properties){
+        foreach ($this->getCookies() as $properties) {
             $cookie = [];
 
             $cookie[] = urlencode($properties['name']) . '=' . urlencode($properties['value']);
