@@ -643,7 +643,7 @@ class Request extends Message implements RequestInterface
 
         // 解析表单数据
         $this->bodyParsers['multipart/form-data'] = function ($input) {
-            if(!preg_match('/boundary="?(\S+)"?/', $this->getHeaderLine('content-type'), $match)){
+            if (!preg_match('/boundary="?(\S+)"?/', $this->getHeaderLine('content-type'), $match)) {
                 return null;
             }
 
@@ -674,14 +674,13 @@ class Request extends Message implements RequestInterface
                                 'size'      => $file->getSize()
                             ]);
                             $uploadedFiles[$match[1]] = $file;
-                        } elseif(preg_match('/name="(.*?)"$/', $headerData, $match)) {
+                        } elseif (preg_match('/name="(.*?)"$/', $headerData, $match)) {
                             $data[$match[1]] = $bufferBody;
                         }
                     }
                 }
             }
 
-            
             return $data;
         };
     }
@@ -693,28 +692,22 @@ class Request extends Message implements RequestInterface
     {
         //获取请求资源的路径
         $this->routeUri = $this->getUri()->getPath();
-        $requestScriptName = $this->getScriptName();
-        $requestScriptDir = dirname($requestScriptName);
 
-        //获取基础路径
-        if (stripos($this->routeUri, $requestScriptName) === 0) {
-            $basePath = $requestScriptName;
-        } elseif ($requestScriptDir !== '/' && stripos($this->routeUri, $requestScriptDir) === 0) {
-            $basePath = $requestScriptDir;
-        }
+        $this->parseAcceptType();
+    }
 
-        if (isset($basePath)) {
-            //获取请求的路径
-            $this->routeUri = '/'.trim(substr($this->routeUri, strlen($basePath)), '/');
-        }
-
-        //获取客户端需要的资源格式
+    /**
+     * 解析请求的资源格式
+     */
+    protected function parseAcceptType()
+    {
+        // 通过文件后缀确认客户端需要的资源格式
         if (false !== ($pos = strrpos($this->routeUri,'.'))) {
             $this->acceptType = substr($this->routeUri, $pos + 1);
             $this->routeUri = strstr($this->routeUri, '.', true);
         }
 
-        // 获取客户端请求的格式
+        // 通过accept头确认客户端需要的资源格式
         if (is_null($this->acceptType)) {
             // 默认为text格式
             $this->acceptType = 'text';
@@ -735,31 +728,6 @@ class Request extends Message implements RequestInterface
                     break;
                 }
             }
-
-            // 默认为text格式
-            if (is_null($this->acceptType)) {
-                $this->acceptType = 'text';
-            }
         }
-    }
-
-    /**
-     * 获取脚本路径
-     *
-     * @return string
-     */
-    protected function getScriptName()
-    {
-        // Todo::获取网站根目录路径
-//        //追踪栈
-//        $backtrace = debug_backtrace();
-//        //取得初始脚本路径
-//        $scriptPath = $backtrace[count($backtrace)-1]['file'];
-//        //获取脚本在网站根目录下的路径
-//        $intersect = array_intersect(explode('/',$this->getUri()->getPath()),explode(DIRECTORY_SEPARATOR,$scriptPath));
-//        $intersect[] = basename($scriptPath);
-//
-//        return '/'.implode('/',$intersect);
-        return "";
     }
 }
