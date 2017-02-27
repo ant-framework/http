@@ -245,6 +245,6 @@ EOT;
     {
         $request = $this->createRequest();
 
-//        $this->assertEquals('json',$request->getAcceptType());
+        $this->assertEquals('json',$request->getAcceptType());
     }
 }
