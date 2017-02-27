@@ -609,6 +609,32 @@ class Request extends Message implements RequestInterface
     }
 
     /**
+     * 检查给定的类型 types(s) 是否可被接受
+     *
+     * @param ...$types
+     * @return bool
+     */
+    public function accepts(...$types)
+    {
+        // 如果客户端没有选择接受类型
+        if (!$this->hasHeader('accept')) {
+            return $types[0];
+        }
+
+        // 获取客户端可以接收的数据类型
+        foreach ($this->getHeader('accept') as $acceptType) {
+            // 服务端可以返回的类型
+            foreach ($types as $type) {
+                if (false !== mb_strpos($acceptType, $type)) {
+                    return $type;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * 注册默认body解析器
      */
     protected function registerBaseBodyParsers()
@@ -698,31 +724,5 @@ class Request extends Message implements RequestInterface
             $this->suffix = substr($this->routeUri, $pos + 1);
             $this->routeUri = strstr($this->routeUri, '.', true);
         }
-    }
-
-    /**
-     * 检查给定的类型 types(s) 是否可被接受
-     *
-     * @param ...$types
-     * @return bool
-     */
-    public function accepts(...$types)
-    {
-        // 如果客户端没有选择接受类型
-        if (!$this->hasHeader('accept')) {
-            return $types[0];
-        }
-
-        // 获取客户端可以接收的数据类型
-        foreach ($this->getHeader('accept') as $acceptType) {
-            // 服务端可以返回的类型
-            foreach ($types as $type) {
-                if (false !== mb_strpos($acceptType, $type)) {
-                    return $type;
-                }
-            }
-        }
-
-        return false;
     }
 }
