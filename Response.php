@@ -497,12 +497,21 @@ class Response extends Message implements ResponseInterface
      */
     public function __toString()
     {
+        if (
+            !$this->hasHeader('Content-Len') &&
+            $size = $this->getBody()->getSize()
+        ) {
+            //设置Body长度
+            $this->headers['content-length'] = [$size];
+        }
+
         $output = sprintf(
             "HTTP/%s %s %s\r\n",
             $this->getProtocolVersion(),
             $this->getStatusCode(),
             $this->getReasonPhrase()
         );
+
         $output .= $this->headerToString();
         $output .= $this->getCookieHeader();
         $output .= PHP_EOL;
