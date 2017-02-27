@@ -28,10 +28,10 @@ include "vendor/autoload.php";
 
 $response = new \Ant\Http\Response();
 
-// 设置响应内容为Json格式
-$response = $response->setType('json')
-    ->setContent(['foo' => 'bar'])
-    ->decorate();
+// 选择装饰器,设置内容,装饰response
+$response = $response->selectRenderer('json')
+    ->setPackage(['foo' => 'bar'])
+    ->decorate($response);
 
 echo $response;
 //output ..
