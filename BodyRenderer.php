@@ -5,6 +5,12 @@ use Ant\Http\Decorator\Renderer;
 use Psr\Http\Message\StreamInterface;
 use Ant\Http\Decorator\RendererFactory;
 
+/**
+ * Todo 将BodyRenderer移植为中间件
+ *
+ * Class BodyRenderer
+ * @package Ant\Http
+ */
 trait BodyRenderer
 {
     /**

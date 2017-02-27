@@ -12,32 +12,4 @@ interface RequestInterface extends PsrRequest
      * @return self
      */
     public static function createFromRequestStr($receiveBuffer);
-
-    /**
-     * 解析客户端请求的数据格式
-     *
-     * @return string
-     */
-    public function getAcceptType();
-
-    /**
-     * 获取请求的body类型
-     *
-     * @return null|string
-     */
-    public function getContentType();
-
-    /**
-     * 获取请求的路由
-     *
-     * @return string
-     */
-    public function getRequestRouteUri();
-
-    /**
-     * 获取内容长度
-     *
-     * @return int|null
-     */
-    public function getContentLength();
 }

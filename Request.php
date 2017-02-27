@@ -36,11 +36,11 @@ class Request extends Message implements RequestInterface
     protected $routeUri = null;
 
     /**
-     * 客户端请求的类型
+     * 请求资源的后缀
      *
      * @var string
      */
-    protected $acceptType = null;
+    protected $suffix = null;
 
     /**
      * cookie参数
@@ -583,13 +583,13 @@ class Request extends Message implements RequestInterface
     }
 
     /**
-     * 解析客户端请求的数据格式
+     * 获取后缀
      *
      * @return string
      */
-    public function getAcceptType()
+    public function getSuffix()
     {
-        return $this->acceptType;
+        return $this->suffix;
     }
 
     /**
@@ -693,41 +693,36 @@ class Request extends Message implements RequestInterface
         //获取请求资源的路径
         $this->routeUri = $this->getUri()->getPath();
 
-        $this->parseAcceptType();
+        // 取得请求资源的格式(后缀)
+        if (false !== ($pos = strrpos($this->routeUri,'.'))) {
+            $this->suffix = substr($this->routeUri, $pos + 1);
+            $this->routeUri = strstr($this->routeUri, '.', true);
+        }
     }
 
     /**
-     * 解析请求的资源格式
+     * 检查给定的类型 types(s) 是否可被接受
+     *
+     * @param ...$types
+     * @return bool
      */
-    protected function parseAcceptType()
+    public function accepts(...$types)
     {
-        // 通过文件后缀确认客户端需要的资源格式
-        if (false !== ($pos = strrpos($this->routeUri,'.'))) {
-            $this->acceptType = substr($this->routeUri, $pos + 1);
-            $this->routeUri = strstr($this->routeUri, '.', true);
+        // 如果客户端没有选择接受类型
+        if (!$this->hasHeader('accept')) {
+            return $types[0];
         }
 
-        // 通过accept头确认客户端需要的资源格式
-        if (is_null($this->acceptType)) {
-            // 默认为text格式
-            $this->acceptType = 'text';
-
-            // 特殊格式
-            $acceptTypes = [
-                'text/javascript'       =>  'jsonp',
-                'application/javascript'=>  'jsonp',
-                'application/json'      =>  'json',
-                'text/json'             =>  'json',
-                'text/xml'              =>  'xml',
-                'application/xml'       =>  'xml',
-            ];
-
-            foreach ($this->getHeader('accept') as $type) {
-                if (array_key_exists($type,$acceptTypes)) {
-                    $this->acceptType = $acceptTypes[$type];
-                    break;
+        // 获取客户端可以接收的数据类型
+        foreach ($this->getHeader('accept') as $acceptType) {
+            // 服务端可以返回的类型
+            foreach ($types as $type) {
+                if (false !== mb_strpos($acceptType, $type)) {
+                    return $type;
                 }
             }
         }
+
+        return false;
     }
 }
