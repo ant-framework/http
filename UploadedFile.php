@@ -6,6 +6,10 @@ use InvalidArgumentException;
 use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UploadedFileInterface;
 
+/**
+ * Class UploadedFile
+ * @package Ant\Http
+ */
 class UploadedFile implements UploadedFileInterface
 {
     /**

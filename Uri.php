@@ -4,6 +4,10 @@ namespace Ant\Http;
 use InvalidArgumentException;
 use Psr\Http\Message\UriInterface;
 
+/**
+ * Class Uri
+ * @package Ant\Http
+ */
 class Uri implements UriInterface
 {
     /**
