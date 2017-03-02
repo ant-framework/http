@@ -170,13 +170,13 @@ class Response extends Message implements ResponseInterface
      */
     protected static $cookieDefaults = [
         'name'      =>  '',
-        'value'     =>  '',           //cookie值
-        'expires'   =>  0,            //超时时间
-        'path'      =>  '/',          //cookie作用目录
-        'domain'    =>  '',           //cookie作用域名
-        'hostonly'  =>  null,        //是否是host专属
-        'secure'    =>  false,       //是否https专属
-        'httponly'  =>  false,       //是否只有http可以使用cookie(启用后,JS将无法访问该cookie)
+        'value'     =>  '',         // cookie值
+        'expires'   =>  0,          // 超时时间
+        'path'      =>  '/',        // cookie作用目录
+        'domain'    =>  '',         // cookie作用域名
+        'hostonly'  =>  null,       // 是否是host专属
+        'secure'    =>  false,      // 是否https专属
+        'httponly'  =>  false,      // 是否只有http可以使用cookie(启用后,JS将无法访问该cookie)
     ];
 
     /**
@@ -199,25 +199,34 @@ class Response extends Message implements ResponseInterface
         $cookies = [];
         foreach ($headerData as $content) {
             list($name, $value) = explode(':', $content, 2);
+
             //cookie的报头名可重复,所以单独写入cookie数组
-            if ('set-cookie' != $name = strtolower($name)) {
+            $name = strtolower($name);
+            if ('set-cookie' != strtolower($name)) {
+
                 $headers[$name] = explode(',',trim($value));
             } else {
-                $tmp = explode(';',$value);
-                list($name,$value) = explode('=',array_shift($tmp));
+                $cookieParams = explode(';',$value);
+                list($name,$value) = explode('=',array_shift($cookieParams));
                 $cookie['value'] = $value;
 
-                foreach ($tmp as $item) {
-                    list($key,$value) = explode('=',$item);
-                    $cookie[trim($key)] = trim($value);
+                foreach ($cookieParams as $param) {
+                    // 辨别 hostonly,secure,httponly 等参数
+                    if (false !== strpos($param, '=')) {
+                        list($key,$value) = explode('=',$param);
+                        $cookie[trim($key)] = trim($value);
+                    } else {
+                        $cookie[$param] = true;
+                    }
                 }
 
-                $cookie = array_intersect_key($cookie,static::$cookieDefaults);
+                // 取出可以识别cookie参数
+                $cookie = array_intersect_key($cookie, static::$cookieDefaults);
                 $cookies[trim($name)] = array_replace(static::$cookieDefaults,$cookie);
             }
         }
 
-        //创建Response实例
+        // 创建Response实例
         $response = new static(
             $statusCode,
             $headers,
@@ -257,14 +266,6 @@ class Response extends Message implements ResponseInterface
         $response = new static();
         $response->keepImmutability(false);
 
-        try {
-            // 尝试使用客户端请求的格式作为响应body格式
-            $response->setType($request->getAcceptType());
-        } catch (\Exception $e) {
-            // 默认使用text格式
-            $response->setType('text');
-        }
-
         return $response;
     }
 
@@ -281,7 +282,7 @@ class Response extends Message implements ResponseInterface
         StreamInterface $body = null,
         $phrase = null,
         $protocol = '1.1'
-    ){
+    ) {
         $this->code = $code;
         $this->headers = $header;
         $this->body = $body ? : new Body();
@@ -397,7 +398,7 @@ class Response extends Message implements ResponseInterface
     public function redirect($url, $status = 303)
     {
         return $this->withStatus($status)
-                    ->withHeader('Location', $url);
+            ->withHeader('Location', $url);
     }
 
     /**
@@ -524,19 +525,24 @@ class Response extends Message implements ResponseInterface
     protected function getCookieHeader()
     {
         $result = [];
+        // 获取所有cookie参数
         foreach ($this->getCookies() as $properties) {
             $cookie = [];
 
+            // 设置cookie参数
             $cookie[] = urlencode($properties['name']) . '=' . urlencode($properties['value']);
 
+            // 设置cookie可用域名
             if (isset($properties['domain'])) {
                 $cookie[] = 'domain=' . $properties['domain'];
             }
 
+            // 设置cookie可用路径
             if (isset($properties['path'])) {
                 $cookie[] = 'path=' . $properties['path'];
             }
 
+            // 设置cookie过期时间
             if (isset($properties['expires'])) {
                 if (is_string($properties['expires'])) {
                     $timestamp = strtotime($properties['expires']);
@@ -548,6 +554,7 @@ class Response extends Message implements ResponseInterface
                 }
             }
 
+            // 是否https专属
             if (isset($properties['secure']) && $properties['secure']) {
                 $cookie[] = 'secure';
             }

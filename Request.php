@@ -593,22 +593,6 @@ class Request extends Message implements RequestInterface
     }
 
     /**
-     * 设置body解析器
-     *
-     * @param $subtype string
-     * @param $parsers callable
-     */
-    public function setBodyParsers($subtype,$parsers)
-    {
-        if (!is_callable($parsers)) {
-            throw new InvalidArgumentException('Body parsers must be a callable');
-        }
-
-        $this->usesBody = false;
-        $this->bodyParsers[$subtype] = $parsers;
-    }
-
-    /**
      * 检查给定的类型 types(s) 是否可被接受
      *
      * @param ...$types
@@ -632,6 +616,22 @@ class Request extends Message implements RequestInterface
         }
 
         return false;
+    }
+
+    /**
+     * 设置body解析器
+     *
+     * @param $subtype string
+     * @param $parsers callable
+     */
+    public function setBodyParsers($subtype,$parsers)
+    {
+        if (!is_callable($parsers)) {
+            throw new InvalidArgumentException('Body parsers must be a callable');
+        }
+
+        $this->usesBody = false;
+        $this->bodyParsers[$subtype] = $parsers;
     }
 
     /**
@@ -662,7 +662,7 @@ class Request extends Message implements RequestInterface
         $this->bodyParsers['application/json'] = $jsonParse;
 
         // 解析Url encode格式
-        $this->bodyParsers['application/x-www-form-urlencoded'] = function($input) {
+        $this->bodyParsers['application/x-www-form-urlencoded'] = function ($input) {
             parse_str($input,$data);
             return $data;
         };

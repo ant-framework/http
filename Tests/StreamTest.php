@@ -1,5 +1,5 @@
 <?php
-namespace Ant\Http\Test;
+namespace Test;
 
 use Ant\Http\Stream;
 

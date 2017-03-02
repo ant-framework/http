@@ -11,5 +11,10 @@
     "psr-4": {
       "Ant\\Http\\": "./"
     }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
   }
 }
