@@ -199,21 +199,19 @@ class Response extends Message implements ResponseInterface
         $cookies = [];
         foreach ($headerData as $content) {
             list($name, $value) = explode(':', $content, 2);
-
             //cookie的报头名可重复,所以单独写入cookie数组
             $name = strtolower($name);
-            if ('set-cookie' != strtolower($name)) {
-
-                $headers[$name] = explode(',',trim($value));
+            if ('set-cookie' != $name) {
+                $headers[$name] = explode(',', trim($value));
             } else {
-                $cookieParams = explode(';',$value);
-                list($name,$value) = explode('=',array_shift($cookieParams));
+                $cookieParams = explode(';', $value);
+                list($name,$value) = explode('=', array_shift($cookieParams));
                 $cookie['value'] = $value;
 
                 foreach ($cookieParams as $param) {
                     // 辨别 hostonly,secure,httponly 等参数
                     if (false !== strpos($param, '=')) {
-                        list($key,$value) = explode('=',$param);
+                        list($key,$value) = explode('=', $param);
                         $cookie[trim($key)] = trim($value);
                     } else {
                         $cookie[$param] = true;
@@ -222,7 +220,7 @@ class Response extends Message implements ResponseInterface
 
                 // 取出可以识别cookie参数
                 $cookie = array_intersect_key($cookie, static::$cookieDefaults);
-                $cookies[trim($name)] = array_replace(static::$cookieDefaults,$cookie);
+                $cookies[trim($name)] = array_replace(static::$cookieDefaults, $cookie);
             }
         }
 
