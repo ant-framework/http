@@ -600,6 +600,13 @@ class Request extends Message implements RequestInterface
      */
     public function accepts(...$types)
     {
+        $suffix = $this->getSuffix();
+
+        // 检查文件后缀格式,是否可以处理
+        if (in_array($suffix, $types)) {
+            return $suffix;
+        }
+
         // 如果客户端没有选择接受类型
         if (!$this->hasHeader('accept')) {
             return $types[0];
