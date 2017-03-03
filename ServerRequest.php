@@ -246,7 +246,7 @@ class ServerRequest extends Request implements ServerRequestInterface
             //获取请求的路径
             $this->routeUri = '/'.trim(substr($this->routeUri, strlen($basePath)), '/');
         }
-        
+
         // 取得请求资源的格式(后缀)
         if (false !== ($pos = strrpos($this->routeUri,'.'))) {
             $this->suffix = substr($this->routeUri, $pos + 1);

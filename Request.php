@@ -29,20 +29,6 @@ class Request extends Message implements RequestInterface
     protected $uri = null;
 
     /**
-     * 请求的路由
-     *
-     * @var string
-     */
-    protected $routeUri = null;
-
-    /**
-     * 请求资源的后缀
-     *
-     * @var string
-     */
-    protected $suffix = null;
-
-    /**
      * cookie参数
      *
      * @var array
@@ -121,8 +107,6 @@ class Request extends Message implements RequestInterface
         $request = new Request($method, $uri, $headers, $body, $protocolVersion);
         // 注册Body基础解析器
         $request->registerBaseBodyParsers();
-        // 解析请求资源的信息
-        $request->parseRequestPath();
 
         return $request;
     }
@@ -273,7 +257,7 @@ class Request extends Message implements RequestInterface
         $uri = $uri->withPath($path)->withQuery($query)->withFragment($fragment);
         parse_str($uri->getQuery(),$this->queryParams);
 
-        return $this->withUri($uri,true);
+        return $this->withUri($uri, true);
     }
 
     /**
@@ -293,11 +277,10 @@ class Request extends Message implements RequestInterface
      * @param bool|false $preserveHost
      * @return Request
      */
-    public function withUri(UriInterface $uri,$preserveHost = false)
+    public function withUri(UriInterface $uri, $preserveHost = false)
     {
         $result = $this->changeAttribute('uri',$uri);
         parse_str($uri->getQuery(),$result->queryParams);
-        $result->parseRequestPath();
 
         //如果开启host保护,原Host为空且新Uri包含Host时才更新
         if (!$preserveHost) {
@@ -346,7 +329,7 @@ class Request extends Message implements RequestInterface
      */
     public function withAddedQueryParams(array $query)
     {
-        return $this->withQueryParams(array_merge($this->getQueryParams(),$query));
+        return $this->withQueryParams(array_merge($this->getQueryParams(), $query));
     }
 
     /**
@@ -561,71 +544,6 @@ class Request extends Message implements RequestInterface
     }
 
     /**
-     * 获取内容长度
-     *
-     * @return int|null
-     */
-    public function getContentLength()
-    {
-        $result = $this->getHeader('Content-Length');
-
-        return $result ? (int)$result[0] : null;
-    }
-
-    /**
-     * 获取请求的路由
-     *
-     * @return string
-     */
-    public function getRequestRouteUri()
-    {
-        return $this->routeUri;
-    }
-
-    /**
-     * 获取后缀
-     *
-     * @return string
-     */
-    public function getSuffix()
-    {
-        return $this->suffix;
-    }
-
-    /**
-     * 检查给定的类型 types(s) 是否可被接受
-     *
-     * @param ...$types
-     * @return bool
-     */
-    public function accepts(...$types)
-    {
-        $suffix = $this->getSuffix();
-
-        // 检查文件后缀格式,是否可以处理
-        if (in_array($suffix, $types)) {
-            return $suffix;
-        }
-
-        // 如果客户端没有选择接受类型
-        if (!$this->hasHeader('accept')) {
-            return $types[0];
-        }
-
-        // 获取客户端可以接收的数据类型
-        foreach ($this->getHeader('accept') as $acceptType) {
-            // 服务端可以返回的类型
-            foreach ($types as $type) {
-                if (false !== mb_strpos($acceptType, $type)) {
-                    return $type;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * 设置body解析器
      *
      * @param $subtype string
@@ -646,7 +564,29 @@ class Request extends Message implements RequestInterface
      */
     protected function registerBaseBodyParsers()
     {
-        $jsonParse = function ($input) {
+        $xmlParse = $this->getXmlParser();
+        $jsonParse = $this->getJsonParser();
+
+        $this->bodyParsers = [
+            // 解析Xml数据,
+            'text/xml'                          =>  $xmlParse,
+            'application/xml'                   =>  $xmlParse,
+
+            // 解析Json数据
+            'text/json'                         =>  $jsonParse,
+            'application/json'                  =>  $jsonParse,
+
+            // 解析表单数据
+            'multipart/form-data'               =>  $this->getFormParser(),
+
+            // 解析Url encode格式
+            'application/x-www-form-urlencoded' =>  $this->getUrlEncodeParser(),
+        ];
+    }
+
+    protected function getJsonParser()
+    {
+        return function ($input) {
             $data = json_decode($input, true);
 
             if ($data === null && json_last_error() !== JSON_ERROR_NONE) {
@@ -655,27 +595,29 @@ class Request extends Message implements RequestInterface
 
             return $data;
         };
+    }
 
-        $xmlParse = function ($input) {
+    protected function getXmlParser()
+    {
+        return function ($input) {
             $backup = libxml_disable_entity_loader(true);
             $data = simplexml_load_string($input);
             libxml_disable_entity_loader($backup);
             return $data;
         };
+    }
 
-        $this->bodyParsers['text/xml'] = $xmlParse;
-        $this->bodyParsers['text/json'] = $jsonParse;
-        $this->bodyParsers['application/xml'] = $xmlParse;
-        $this->bodyParsers['application/json'] = $jsonParse;
-
-        // 解析Url encode格式
-        $this->bodyParsers['application/x-www-form-urlencoded'] = function ($input) {
+    protected function getUrlEncodeParser()
+    {
+        return function ($input) {
             parse_str($input,$data);
             return $data;
         };
+    }
 
-        // 解析表单数据
-        $this->bodyParsers['multipart/form-data'] = function ($input) {
+    protected function getFormParser()
+    {
+        return function ($input) {
             if (!preg_match('/boundary="?(\S+)"?/', $this->getHeaderLine('content-type'), $match)) {
                 return null;
             }
@@ -716,20 +658,5 @@ class Request extends Message implements RequestInterface
 
             return $data;
         };
-    }
-
-    /**
-     * 解析请求的资源
-     */
-    protected function parseRequestPath()
-    {
-        //获取请求资源的路径
-        $this->routeUri = $this->getUri()->getPath();
-
-        // 取得请求资源的格式(后缀)
-        if (false !== ($pos = strrpos($this->routeUri,'.'))) {
-            $this->suffix = substr($this->routeUri, $pos + 1);
-            $this->routeUri = strstr($this->routeUri, '.', true);
-        }
     }
 }
