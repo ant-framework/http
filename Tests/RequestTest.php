@@ -1,5 +1,5 @@
 <?php
-namespace Ant\Http\Test;
+namespace Test;
 
 use Ant\Http\Uri;
 use Ant\Http\Request;
@@ -90,7 +90,7 @@ EOT;
         //================================== 测试Uri ==================================//
         $request = $this->createRequest();
         //获取Uri
-        $this->assertEquals('/Test',$request->getRequestRouteUri());
+        $this->assertEquals('/Test',$request->getUri()->getPath());
         $this->assertEquals('/Test?key=value#hello',$request->getRequestTarget());
         $this->assertEquals('http://www.example.com:80/Test?key=value#hello',(string)$request->getUri());
         $this->assertEquals(['key' => 'value'],$request->getQueryparams());
@@ -98,10 +98,10 @@ EOT;
         //================================== 测试请求目标对GET参数与Uri的影响 ==================================//
         //修改请求目标
         $newRequest = $request->withRequestTarget('/Demo?name=alex&age=18');
-        $this->assertEquals('/Demo',$newRequest->getRequestRouteUri());
-        $this->assertEquals('/Demo?name=alex&age=18',$newRequest->getRequestTarget());
-        $this->assertEquals('http://www.example.com:80/Demo?name=alex&age=18',(string)$newRequest->getUri());
-        $this->assertEquals(['name' => 'alex','age' => '18'],$request->getQueryParams());
+        $this->assertEquals('/Demo',  $newRequest->getUri()->getPath());
+        $this->assertEquals('/Demo?name=alex&age=18', $newRequest->getRequestTarget());
+        $this->assertEquals('http://www.example.com:80/Demo?name=alex&age=18', (string)$newRequest->getUri());
+        $this->assertEquals(['name' => 'alex','age' => '18'], $newRequest->getQueryParams());
 
         //================================== 测试GET参数对请求Uri的影响 ==================================//
         //修改Get参数
@@ -114,7 +114,7 @@ EOT;
         //修改Uri
         $newRequest = $request->withUri(new Uri('http://www.domain.com/foobar?test_key=test_value'));
         $this->assertEquals('/foobar?test_key=test_value',$newRequest->getRequestTarget());
-        $this->assertEquals('/foobar',$newRequest->getRequestRouteUri());
+        $this->assertEquals('/foobar',$newRequest->getUri()->getPath());
         $this->assertEquals(['test_key' => 'test_value'],$newRequest->getQueryParams());
 
         //================================== 测试输入非法参数 ==================================//
@@ -239,12 +239,5 @@ EOT;
         $this->assertEquals('bar',$request->getBodyParam('foo'));
         $this->assertNotEquals("POST / HTTP/1.1\r\nContent-Type: application/json\r\nHost: www.example.com\r\n\r\n{\"foo\":\"bar\"}",$request->__toString());
         $this->assertEquals("POST / HTTP/1.1\r\nContent-Type: application/json\r\nHost: www.example.com\r\n\r\n",$request->__toString());
-    }
-
-    public function testRequestAcceptType()
-    {
-        $request = $this->createRequest();
-
-        $this->assertEquals('json',$request->getAcceptType());
     }
 }

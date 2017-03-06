@@ -1,6 +1,10 @@
 <?php
 namespace Ant\Http;
 
+/**
+ * Class Body
+ * @package Ant\Http
+ */
 class Body extends Stream
 {
     public function __construct($stream = null)

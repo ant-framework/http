@@ -6,6 +6,10 @@ use InvalidArgumentException;
 use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UploadedFileInterface;
 
+/**
+ * Class UploadedFile
+ * @package Ant\Http
+ */
 class UploadedFile implements UploadedFileInterface
 {
     /**
@@ -110,41 +114,45 @@ class UploadedFile implements UploadedFileInterface
         }
 
         $targetIsStream = strpos($targetPath, '://') > 0;
+
+        // 如果目标是文件,而且不可写入时
         if (!$targetIsStream && !is_writable(dirname($targetPath))){
             throw new InvalidArgumentException('Upload target path is not writable');
         }
 
         if ($this->stream !== null) {
             if (!$targetIsStream) {
-                //删除文件之后再写入
+                // 删除文件之后再写入
                 unlink($targetPath);
             }
 
-            //将流拷贝到目标文件上
-            stream_copy_to_stream($this->stream->detach(),fopen($targetPath,'w+'));
-        }else{
-            if ($targetIsStream) {
-                //处理流
-                if (!copy($this->file['tmp_name'], $targetPath)) {
-                    throw new RuntimeException(sprintf('Error moving uploaded file %1s to %2s', $this->file['name'], $targetPath));
-                }
-                if (!unlink($this->file['tmp_name'])) {
-                    throw new RuntimeException(sprintf('Error removing uploaded file %1s', $this->file['name']));
-                }
-            } elseif (substr(PHP_SAPI,0,3) === 'cgi') {
-                //处理post上传
-                if (!is_uploaded_file($this->file['tmp_name'])) {
-                    throw new RuntimeException(sprintf('%1s is not a valid uploaded file', $this->file['name']));
-                }
+            // 将目标作为流打开
+            $targetStream = fopen($targetPath,'w+');
+            // 将流拷贝到目标文件上
+            stream_copy_to_stream($this->stream->detach(), $targetStream);
+            // 关闭流,减少损耗
+            fclose($targetStream);
+        } elseif ($targetIsStream) {
+            // 处理流
+            if (!copy($this->file['tmp_name'], $targetPath)) {
+                throw new RuntimeException(sprintf('Error moving uploaded file %1s to %2s', $this->file['name'], $targetPath));
+            }
+            if (!unlink($this->file['tmp_name'])) {
+                throw new RuntimeException(sprintf('Error removing uploaded file %1s', $this->file['name']));
+            }
+        } elseif (substr(PHP_SAPI,0,3) === 'cgi') {
+            // 处理post上传
+            if (!is_uploaded_file($this->file['tmp_name'])) {
+                throw new RuntimeException(sprintf('%1s is not a valid uploaded file', $this->file['name']));
+            }
 
-                if (!move_uploaded_file($this->file['tmp_name'], $targetPath)) {
-                    throw new RuntimeException(sprintf('Error moving uploaded file %1s to %2s', $this->file['name'], $targetPath));
-                }
-            } else {
-                //当以Cli启动时的文件上传
-                if (!rename($this->file['tmp_name'], $targetPath)) {
-                    throw new RuntimeException(sprintf('Error moving uploaded file %1s to %2s', $this->file['name'], $targetPath));
-                }
+            if (!move_uploaded_file($this->file['tmp_name'], $targetPath)) {
+                throw new RuntimeException(sprintf('Error moving uploaded file %1s to %2s', $this->file['name'], $targetPath));
+            }
+        } else {
+            // 当以Cli启动时的文件上传
+            if (!rename($this->file['tmp_name'], $targetPath)) {
+                throw new RuntimeException(sprintf('Error moving uploaded file %1s to %2s', $this->file['name'], $targetPath));
             }
         }
 
