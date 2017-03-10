@@ -225,32 +225,29 @@ class ServerRequest extends Request implements ServerRequestInterface
     }
 
     /**
-     * 解析请求的资源
-     * Todo 解析脚本当前路径
+     * 获取路由路径
+     *
+     * @return string
      */
-    protected function parseRequestPath()
+    public function getRoutePath()
     {
-//        //获取请求资源的路径
-//        $requestScriptName = $this->getServerParam('SCRIPT_NAME');
-//        $requestScriptDir = dirname($requestScriptName);
-//        $this->routeUri = $this->getUri()->getPath();
-//
-//        //获取基础路径
-//        if (stripos($this->routeUri, $requestScriptName) === 0) {
-//            $basePath = $requestScriptName;
-//        } elseif ($requestScriptDir !== '/' && stripos($this->routeUri, $requestScriptDir) === 0) {
-//            $basePath = $requestScriptDir;
-//        }
-//
-//        if(isset($basePath)) {
-//            //获取请求的路径
-//            $this->routeUri = '/'.trim(substr($this->routeUri, strlen($basePath)), '/');
-//        }
-//
-//        // 取得请求资源的格式(后缀)
-//        if (false !== ($pos = strrpos($this->routeUri,'.'))) {
-//            $this->suffix = substr($this->routeUri, $pos + 1);
-//            $this->routeUri = strstr($this->routeUri, '.', true);
-//        }
+        //获取请求资源的路径
+        $requestScriptName = $this->getServerParam('SCRIPT_NAME');
+        $requestScriptDir = dirname($requestScriptName);
+        $routePath = $this->getUri()->getPath();
+
+        //获取基础路径
+        if (stripos($routePath, $requestScriptName) === 0) {
+            $basePath = $requestScriptName;
+        } elseif ($requestScriptDir !== '/' && stripos($routePath, $requestScriptDir) === 0) {
+            $basePath = $requestScriptDir;
+        }
+
+        if (isset($basePath)) {
+            //获取请求的路径
+            $routePath = '/'.trim(substr($routePath, strlen($basePath)), '/');
+        }
+
+        return $routePath;
     }
 }
