@@ -106,7 +106,7 @@ class Uri implements UriInterface
 
         $uri = $scheme.':';
         $uri .= '//'.($userInfo ? $userInfo."@" : ''). $host .($port !== null ? ':' . $port : '');
-        $uri .= $env['REQUEST_URI'];
+        $uri .= isset($env['REQUEST_URI']) ? $env['REQUEST_URI'] : '';
 
         return new static($uri);
     }
@@ -119,7 +119,7 @@ class Uri implements UriInterface
      */
     public function __construct($uri = '')
     {
-        foreach (parse_url($uri) as $key => $value) {
+        foreach ((array) parse_url($uri) as $key => $value) {
             $this->$key = $value;
         }
     }

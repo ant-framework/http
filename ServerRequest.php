@@ -18,7 +18,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      *
      * @var array
      */
-    protected $serverParams;
+    protected $serverParams = [];
 
     /**
      * 属性
@@ -26,6 +26,16 @@ class ServerRequest extends Request implements ServerRequestInterface
      * @var array
      */
     protected $attributes = [];
+
+    /**
+     * @var string
+     */
+    protected $routePath;
+
+    /**
+     * @var string
+     */
+    protected $routeSuffix;
 
     /**
      * 在“$_SERVER”中不是以“HTTP_”开头的Http头
@@ -81,6 +91,8 @@ class ServerRequest extends Request implements ServerRequestInterface
             : '/';
 
         $this->uri = Uri::createFromEnvironment($this->serverParams);
+
+        $this->parseRequestPath();
     }
 
     /**
@@ -224,17 +236,28 @@ class ServerRequest extends Request implements ServerRequestInterface
         return isset($cookie[$key]) ? $cookie[$key] : null;
     }
 
-    /**
-     * 获取路由路径
-     *
-     * @return string
-     */
     public function getRoutePath()
+    {
+        return $this->routePath;
+    }
+
+    public function getRouteSuffix()
+    {
+        return $this->routeSuffix;
+    }
+
+    /**
+     * 解析脚本当前路径
+     *
+     * @return array
+     */
+    protected function parseRequestPath()
     {
         //获取请求资源的路径
         $requestScriptName = $this->getServerParam('SCRIPT_NAME');
         $requestScriptDir = dirname($requestScriptName);
         $routePath = $this->getUri()->getPath();
+        $routeSuffix = null;
 
         //获取基础路径
         if (stripos($routePath, $requestScriptName) === 0) {
@@ -243,11 +266,18 @@ class ServerRequest extends Request implements ServerRequestInterface
             $basePath = $requestScriptDir;
         }
 
-        if (isset($basePath)) {
+        if(isset($basePath)) {
             //获取请求的路径
             $routePath = '/'.trim(substr($routePath, strlen($basePath)), '/');
         }
 
-        return $routePath;
+        // 取得请求资源的格式(后缀)
+        if (false !== ($pos = strrpos($routePath,'.'))) {
+            $routeSuffix = substr($routePath, $pos + 1);
+            $routePath = strstr($routePath, '.', true);
+        }
+
+        $this->routePath = $routePath;
+        $this->routeSuffix = $routeSuffix;
     }
 }
