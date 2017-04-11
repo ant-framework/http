@@ -36,11 +36,55 @@ abstract class Message implements MessageInterface
     protected $body = null;
 
     /**
+     * 属性
+     *
+     * @var array
+     */
+    protected $attributes = [];
+
+    /**
      * 输出字符串
      *
      * @return string
      */
     abstract public function __toString();
+
+    /**
+     * 解析Http请求
+     *
+     * @param $message
+     * @return array
+     */
+    public static function parseMessage($message)
+    {
+        if (!$message || !is_string($message)) {
+            throw new \InvalidArgumentException('Invalid message');
+        }
+
+        list($headerBuffer, $body) = explode("\r\n\r\n", $message, 2);
+
+        $headerLines = explode("\r\n", $headerBuffer);
+
+        $startLine = array_shift($headerLines);
+
+        $headers = [];
+        foreach ($headerLines as $line) {
+            if (strpos($line, ':')) {
+                $parts = explode(':', $line, 2);
+                $key = strtolower($parts[0]);
+                // 通过逗号分割的不区分大小写的字符串形式的所有值
+                $value = array_map("trim", explode(',', $parts[1]));
+
+                if (isset($headers[$key])) {
+                    $headers[$key] = array_merge($headers[$key], $value);
+                } else {
+                    $headers[$key] = $value;
+                }
+            }
+        }
+
+        return [$startLine, $headers, $body];
+    }
 
     /**
      * 获取HTTP协议版本
@@ -64,7 +108,7 @@ abstract class Message implements MessageInterface
             throw new InvalidArgumentException('Input version error');
         }
 
-        return $this->changeAttribute('protocolVersion',$version);
+        return $this->changeAttribute('protocolVersion', $version);
     }
 
     /**
@@ -88,7 +132,7 @@ abstract class Message implements MessageInterface
     {
         $name = strtolower($name);
 
-        return array_key_exists($name,$this->headers);
+        return array_key_exists($name, $this->headers);
     }
 
     /**
@@ -134,7 +178,10 @@ abstract class Message implements MessageInterface
             throw new InvalidArgumentException('Header must be string or array');
         }
 
-        return $this->changeAttribute(['headers',strtolower($name)],is_array($value) ? $value : explode(',',$value));
+        return $this->changeAttribute(
+            ['headers', strtolower($name)],
+            is_array($value) ? $value : explode(',',$value)
+        );
     }
 
     /**
@@ -169,7 +216,7 @@ abstract class Message implements MessageInterface
         $header = $this->headers;
         unset($header[strtolower($name)]);
 
-        return $this->changeAttribute('headers',$header);
+        return $this->changeAttribute('headers', $header);
     }
 
     /**
@@ -199,6 +246,10 @@ abstract class Message implements MessageInterface
      */
     public function getBody()
     {
+        if (!$this->body) {
+            // Todo Lazy Init Body
+        }
+
         return $this->body;
     }
 
@@ -214,7 +265,60 @@ abstract class Message implements MessageInterface
             return $this;
         }
 
-        return $this->changeAttribute('body',$body);
+        return $this->changeAttribute('body', $body);
+    }
+
+    /**
+     * 获取所有属性
+     *
+     * @return mixed[]
+     */
+    public function getAttributes()
+    {
+        return $this->attributes;
+    }
+
+    /**
+     * 获取一个属性的值
+     *
+     * @param string $name
+     * @param mixed $default
+     * @return mixed
+     */
+    public function getAttribute($name, $default = null)
+    {
+        return array_key_exists($name, $this->attributes)
+            ? $this->attributes[$name]
+            : $default;
+    }
+
+    /**
+     * 设置一个属性.
+     *
+     * @param string $name
+     * @param mixed $value
+     * @return self
+     */
+    public function withAttribute($name, $value)
+    {
+        return $this->changeAttribute(['attributes',$name], $value);
+    }
+
+    /**
+     * 删除一个属性
+     *
+     * @see getAttributes()
+     * @param string $name .
+     * @return self
+     */
+    public function withoutAttribute($name)
+    {
+        $self = clone $this;
+        if (array_key_exists($name, $self->attributes)) {
+            unset($self->attributes[$name]);
+        }
+
+        return $self;
     }
 
     /**
@@ -265,19 +369,20 @@ abstract class Message implements MessageInterface
      * @param $value mixed
      * @return object
      */
-    protected function changeAttribute($attribute,$value)
+    protected function changeAttribute($attribute, $value)
     {
-        $instance = $this->immutability ? clone $this : $this;
+        $self = $this->immutability ? clone $this : $this;
+
         if (is_array($attribute)) {
-            list($array,$key) = $attribute;
+            list($attribute, $key) = $attribute;
 
             // 兼容7以下
-            $array = &$instance->$array;
-            $array[$key] = $value;
+            $attribute = &$self->$attribute;
+            $attribute[$key] = $value;
         } else {
-            $instance->$attribute = $value;
+            $self->$attribute = $value;
         }
 
-        return $instance;
+        return $self;
     }
 }

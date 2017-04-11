@@ -45,28 +45,41 @@ class Stream implements StreamInterface
     protected $metadata = [];
 
     /**
-     * 可用写模式
+     * 可用读写模式
      *
      * @var array
      */
-    protected $readMode = [
-        'r' => true, 'w+' => true, 'r+' => true, 'x+' => true, 'c+' => true,
-        'rb' => true, 'w+b' => true, 'r+b' => true, 'x+b' => true,
-        'c+b' => true, 'rt' => true, 'w+t' => true, 'r+t' => true,
-        'x+t' => true, 'c+t' => true, 'a+' => true,
+    protected static $readWriteHash = [
+        'read' => [
+            'r' => true, 'w+' => true, 'r+' => true, 'x+' => true, 'c+' => true,
+            'rb' => true, 'w+b' => true, 'r+b' => true, 'x+b' => true,
+            'c+b' => true, 'rt' => true, 'w+t' => true, 'r+t' => true,
+            'x+t' => true, 'c+t' => true, 'a+' => true,
+        ],
+        'write' => [
+            'w' => true, 'w+' => true, 'rw' => true, 'r+' => true, 'x+' => true,
+            'c+' => true, 'wb' => true, 'w+b' => true, 'r+b' => true,
+            'x+b' => true, 'c+b' => true, 'w+t' => true, 'r+t' => true,
+            'x+t' => true, 'c+t' => true, 'a' => true, 'a+' => true,
+        ]
     ];
 
     /**
-     * 可用读模式
-     *
-     * @var array
+     * @param $resource
+     * @return static
      */
-    protected $writeMode = [
-        'w' => true, 'w+' => true, 'rw' => true, 'r+' => true, 'x+' => true,
-        'c+' => true, 'wb' => true, 'w+b' => true, 'r+b' => true,
-        'x+b' => true, 'c+b' => true, 'w+t' => true, 'r+t' => true,
-        'x+t' => true, 'c+t' => true, 'a' => true, 'a+' => true,
-    ];
+    public static function createFrom($resource)
+    {
+        // Todo 获取各类Stream
+        if (is_scalar($resource)) {
+            $stream = fopen('php://temp', 'r+');
+            if ($resource !== '') {
+                fwrite($stream, $resource);
+                fseek($stream, 0);
+            }
+            return new static($stream);
+        }
+    }
 
     /**
      * 处理一个stream资源
@@ -81,14 +94,18 @@ class Stream implements StreamInterface
         }
 
         $this->stream = $stream;
-        $this->metadata = stream_get_meta_data($this->stream);
+        $meta = stream_get_meta_data($this->stream);
 
-        $mode = $this->getMetadata('mode');
-        $this->isSeekable = $this->getMetadata('seekable');
-        $this->isReadable = isset($this->readMode[$mode]) ?: false;
-        $this->isWritable = isset($this->writeMode[$mode]) ?: false;
+        $this->metadata = $meta;
+        $this->isSeekable = $meta['seekable'];
+        $this->isReadable = isset(static::$readWriteHash['read'][$meta['mode']]);
+        $this->isWritable = isset(static::$readWriteHash['write'][$meta['mode']]);
     }
 
+    public function __destruct()
+    {
+        // Todo 在结束时关闭流
+    }
 
     /**
      * 从stream读取所有数据到一个字符串
@@ -136,11 +153,9 @@ class Stream implements StreamInterface
         }
 
         $oldResource = $this->stream;
-        $this->stream = null;
-        $this->isSeekable = false;
-        $this->isReadable = false;
-        $this->isWritable = false;
+        unset($this->stream);
         $this->metadata = [];
+        $this->isSeekable = $this->isReadable = $this->isWritable = false;
 
         return $oldResource;
     }
@@ -206,9 +221,27 @@ class Stream implements StreamInterface
      */
     public function seek($offset, $whence = SEEK_SET)
     {
-        if (!$this->isSeekable() || fseek($this->stream,$offset,$whence) === -1) {
-            throw new RuntimeException('Could not seek in stream');
+        if (!$this->isSeekable()) {
+            throw new RuntimeException('Stream is not seekable');
         }
+
+        if (fseek($this->stream, $offset, $whence) === -1) {
+            throw new RuntimeException(sprintf(
+                'Unable to seek to stream position %s with whence %s',
+                $offset,
+                var_export($whence, true)
+            ));
+        }
+    }
+
+    /**
+     * 将stream指针的位置 设置为stream的开头
+     *
+     * @throws RuntimeException.
+     */
+    public function rewind()
+    {
+        $this->seek(0);
     }
 
     /**
@@ -230,27 +263,25 @@ class Stream implements StreamInterface
      */
     public function read($length)
     {
+        if (!$this->isReadable()) {
+            throw new RuntimeException('Cannot read from non-readable stream');
+        }
+        if ($length < 0) {
+            throw new \RuntimeException('Length parameter cannot be negative');
+        }
+
+        if (0 === $length) {
+            return '';
+        }
+
         //从stream指针的位置开始读取
-        if (
-            !$this->isReadable() ||
-            false === $data = stream_get_contents($this->stream, $length, $this->tell())
-        ) {
-            throw new RuntimeException('Could not read from stream');
+        $data = stream_get_contents($this->stream, $length);
+
+        if (false === $data) {
+            throw new RuntimeException("Unable to read from stream");
         }
 
         return $data;
-    }
-
-    /**
-     * 将stream指针的位置 设置为stream的开头
-     *
-     * @throws RuntimeException.
-     */
-    public function rewind()
-    {
-        if (!$this->isSeekable() || rewind($this->stream) === false) {
-            throw new RuntimeException('Could not rewind in stream');
-        }
     }
 
     /**
@@ -278,14 +309,19 @@ class Stream implements StreamInterface
             !method_exists($content,'__toString')
         ) {
             //参数错误
-            throw new InvalidArgumentException(
-                sprintf('The Response content must be a string or object implementing __toString(), "%s" given.', gettype($content))
-            );
+            throw new InvalidArgumentException(sprintf(
+                'The Response content must be a string or object implementing __toString(), "%s" given.',
+                gettype($content)
+            ));
         }
 
-        if (!$this->isWritable() || ($written = fwrite($this->stream, (string)$content)) === false) {
+        if (!$this->isWritable()) {
             //写入失败
-            throw new RuntimeException('Could not write to stream');
+            throw new RuntimeException('Cannot write to a non-writable stream');
+        }
+
+        if (($written = fwrite($this->stream, (string)$content)) === false) {
+            throw new RuntimeException('Unable to write to stream');
         }
 
         return $written;
@@ -300,7 +336,13 @@ class Stream implements StreamInterface
      */
     public function getContents()
     {
-        return $this->read(-1);
+        $contents = stream_get_contents($this->stream);
+
+        if ($contents === false) {
+            throw new \RuntimeException('Unable to read stream contents');
+        }
+
+        return $contents;
     }
 
     /**

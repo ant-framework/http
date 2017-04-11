@@ -12,7 +12,6 @@ use Psr\Http\Message\ServerRequestInterface;
  */
 class ServerRequest extends Request implements ServerRequestInterface
 {
-    protected $requestTarget;
     /**
      * 服务器和执行环境信息
      *
@@ -86,10 +85,6 @@ class ServerRequest extends Request implements ServerRequestInterface
             }
         }
 
-        $this->requestTarget = isset($this->serverParams['REQUEST_URI'])
-            ? $this->serverParams['REQUEST_URI']
-            : '/';
-
         $this->uri = Uri::createFromEnvironment($this->serverParams);
 
         $this->parseRequestPath();
@@ -139,57 +134,6 @@ class ServerRequest extends Request implements ServerRequestInterface
     }
 
     /**
-     * 获取所有属性
-     *
-     * @return mixed[]
-     */
-    public function getAttributes()
-    {
-        return $this->attributes;
-    }
-
-    /**
-     * 获取一个属性的值
-     *
-     * @param string $name
-     * @param mixed $default
-     * @return mixed
-     */
-    public function getAttribute($name, $default = null)
-    {
-        return $this->attributes[$name];
-    }
-
-    /**
-     * 设置一个属性.
-     *
-     * @param string $name
-     * @param mixed $value
-     * @return self
-     */
-    public function withAttribute($name, $value)
-    {
-        return $this->changeAttribute(['attributes',$name],$value);
-    }
-
-    /**
-     * 删除一个属性
-     *
-     * @see getAttributes()
-     * @param string $name .
-     * @return self
-     */
-    public function withoutAttribute($name)
-    {
-        $result = clone $this;
-        if (array_key_exists($name,$result->attributes)) {
-            unset($result->attributes[$name]);
-        }
-
-        return $result;
-    }
-
-    /**
      * 获取GET参数
      *
      * @param null $key
@@ -236,11 +180,17 @@ class ServerRequest extends Request implements ServerRequestInterface
         return isset($cookie[$key]) ? $cookie[$key] : null;
     }
 
+    /**
+     * @return string
+     */
     public function getRoutePath()
     {
         return $this->routePath;
     }
 
+    /**
+     * @return string
+     */
     public function getRouteSuffix()
     {
         return $this->routeSuffix;

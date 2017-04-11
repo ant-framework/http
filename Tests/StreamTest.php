@@ -134,7 +134,7 @@ class StreamTest extends \PHPUnit_Framework_TestCase
         $stream->write('foobar');
 
         $this->assertFalse($stream->eof());
-        $this->assertEquals(6,$stream->getSize());
+        $this->assertEquals(6, $stream->getSize());
         $this->assertTrue(is_resource($stream->detach()));
     }
 

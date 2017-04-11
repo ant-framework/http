@@ -26,11 +26,12 @@ interface ResponseInterface extends PsrResponseInterface
     /**
      * 设置Cookie
      *
-     * @param $name
-     * @param $value
+     * @param string $name
+     * @param mixed $value
+     * @param array $options
      * return $this
      */
-    public function setCookie($name, $value);
+    public function setCookie($name, $value, array $options = []);
 
     /**
      * 获取所有Cookie

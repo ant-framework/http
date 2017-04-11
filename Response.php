@@ -7,6 +7,7 @@ use Ant\Http\Interfaces\ResponseInterface;
 
 /**
  * Todo 响应分块
+ * Todo Cookie对象(包含加密,读取,设置响应Cookie)
  * Class Response
  * @package Ant\Http
  */
@@ -205,22 +206,22 @@ class Response extends Message implements ResponseInterface
                 $headers[$name] = explode(',', trim($value));
             } else {
                 $cookieParams = explode(';', $value);
-                list($name,$value) = explode('=', array_shift($cookieParams));
-                $cookie['value'] = $value;
+                $cookie = array_map("trim", explode('=', array_shift($cookieParams)));
 
+                $options = [];
                 foreach ($cookieParams as $param) {
                     // 辨别 hostonly,secure,httponly 等参数
                     if (false !== strpos($param, '=')) {
-                        list($key,$value) = explode('=', $param);
-                        $cookie[trim($key)] = trim($value);
+                        list($key, $value) = explode('=', $param);
+                        $options[trim($key)] = trim($value);
                     } else {
-                        $cookie[$param] = true;
+                        $options[$param] = true;
                     }
                 }
 
                 // 取出可以识别cookie参数
-                $cookie = array_intersect_key($cookie, static::$cookieDefaults);
-                $cookies[trim($name)] = array_replace(static::$cookieDefaults, $cookie);
+                $cookie[] = array_intersect_key($options, static::$cookieDefaults);
+                $cookies[] = $cookie;
             }
         }
 
@@ -250,7 +251,7 @@ class Response extends Message implements ResponseInterface
         list($headerBuffer, $bodyBuffer) = explode("\r\n\r\n", $receiveBuffer, 2);
         $headerData = explode("\r\n",$headerBuffer);
 
-        return static::createFromRequestResult($headerData,$bodyBuffer);
+        return static::createFromRequestResult($headerData, $bodyBuffer);
     }
 
     /**
@@ -313,7 +314,7 @@ class Response extends Message implements ResponseInterface
 
         $this->responsePhrase = (string) $reasonPhrase;
 
-        return $this->changeAttribute('code',$code);
+        return $this->changeAttribute('code', $code);
     }
 
     /**
@@ -338,11 +339,13 @@ class Response extends Message implements ResponseInterface
      */
     public function replaceCookie(array $cookies)
     {
-        foreach ($cookies as $name => $args) {
-            $this->setCookie($name,$args);
+        $self = $this;
+        foreach ($cookies as $cookie) {
+            list($name, $value, $options) = $cookie;
+            $self = $self->setCookie($name, $value, $options);
         }
 
-        return $this;
+        return $self;
     }
 
     /**
@@ -350,19 +353,15 @@ class Response extends Message implements ResponseInterface
      *
      * @return $this
      */
-    public function setCookie($name, $value)
+    public function setCookie($name, $value, array $options = [])
     {
-        if (!is_array($value)) {
-            $value = ['value' => (string)$value];
-        }
+        $options = array_merge(compact("name", "value"), $options);
+        $options = array_replace(static::$cookieDefaults, $options);
+        // 在一个域名,路径下,只有一个cookie
+        $key = sprintf('%s@%s:%s', $name, $options['domain'], $options['path']);
 
-        $value['name'] = $name;
-        $value = array_replace(static::$cookieDefaults, $value);
-        $key = sprintf('%s@%s:%s', $name, $value['domain'], $value['path']);
-
-        $this->cookies[$key] = $value;
-
-        return $this;
+        // 保存cookie
+        return $this->changeAttribute(['cookies', $key], $options);
     }
 
     /**

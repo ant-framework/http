@@ -52,7 +52,7 @@ EOT;
 
         $cookies = $response->getCookies();
         // 生成唯一cookie
-        $this->assertEquals(['test@:/demo','foo@www.foobar.com:/test'],array_keys($cookies));
+        $this->assertEquals(['test@:/demo','foo@www.foobar.com:/test'], array_keys($cookies));
         $cookieData = [
             [
                 'name' => 'test',

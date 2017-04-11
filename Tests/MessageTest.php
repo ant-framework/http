@@ -12,7 +12,7 @@ class MessageTest extends \PHPUnit_Framework_TestCase
     {
         $message = new HttpMessage();
 
-        $this->assertInstanceOf(PsrMessage::class,$message);
+        $this->assertInstanceOf(PsrMessage::class, $message);
     }
 
     /**
@@ -23,11 +23,11 @@ class MessageTest extends \PHPUnit_Framework_TestCase
         $message = new HttpMessage();
 
         $newMessage = $message->withHeader('foo','bar');
-        $this->assertNotEquals($newMessage,$message);
+        $this->assertNotEquals($newMessage, $message);
 
         // Close immutability
         $newMessage = $message->keepImmutability(false)->withHeader('foo','bar');
-        $this->assertEquals($newMessage,$message);
+        $this->assertEquals($newMessage, $message);
     }
 
     /**

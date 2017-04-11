@@ -82,22 +82,14 @@ class Request extends Message implements RequestInterface
             throw new \InvalidArgumentException('Request must be string');
         }
 
-        list($headerBuffer, $bodyBuffer) = explode("\r\n\r\n", $receiveBuffer, 2);
+        list($startLine, $headers, $bodyBuffer) = static::parseMessage($receiveBuffer);
 
-        // 解析Header内容
-        $headerData = explode("\r\n",$headerBuffer);
-        list($method, $requestTarget, $protocol) = explode(' ', array_shift($headerData), 3);
+        // 解析起始行
+        list($method, $requestTarget, $protocol) = explode(' ', $startLine, 3);
         $protocolVersion = str_replace('HTTP/', '', $protocol);
 
-        $headers = [];
-        foreach ($headerData as $content) {
-            if (isset($content)) {
-                list($name, $value) = explode(':', $content, 2);
-                $headers[strtolower($name)] = explode(',',trim($value));
-            }
-        }
-
-        $uri = (isset($headers['host']) ? 'http://'.$headers['host'][0] : '') .$requestTarget;
+        // 获取Uri
+        $uri = (isset($headers['host']) ? 'http://'.$headers['host'][0] : '') . $requestTarget;
 
         // 将Body写入流
         $body = ($method == 'GET')
@@ -116,11 +108,16 @@ class Request extends Message implements RequestInterface
      * @param string $method                    Http动词
      * @param string $uri                       请求的Uri
      * @param array $headers                    Http头
-     * @param StreamInterface|null $body        Body内容
+     * @param mixed $body        Body内容
      * @param string $protocolVersion           Http协议版本
      */
-    public function __construct($method, $uri, array $headers = [], StreamInterface $body = null, $protocolVersion = '1.1')
-    {
+    public function __construct(
+        $method,
+        $uri,
+        array $headers = [],
+        $body = null,
+        $protocolVersion = '1.1'
+    ) {
         $this->method = $method;
         $this->uri = new Uri($uri);
         $this->headers = $headers;
@@ -212,7 +209,7 @@ class Request extends Message implements RequestInterface
      */
     public function withMethod($method)
     {
-        return $this->changeAttribute('method',$method);
+        return $this->changeAttribute('method', $method);
     }
 
     /**
@@ -247,16 +244,20 @@ class Request extends Message implements RequestInterface
             throw new InvalidArgumentException('The request target must be a string');
         }
 
-        $data = parse_url($requestTarget);
-        $uri = $this->uri;
+        $meta = parse_url($requestTarget);
 
-        $path = isset($data['path']) ? $data['path'] : '';
-        $query = isset($data['query']) ? $data['query'] : '';
-        $fragment = isset($data['fragment']) ? $data['fragment'] : '';
+        $path = isset($meta['path']) ? $meta['path'] : '';
+        $query = isset($meta['query']) ? $meta['query'] : '';
+        $fragment = isset($meta['fragment']) ? $meta['fragment'] : '';
 
-        $uri = $uri->withPath($path)->withQuery($query)->withFragment($fragment);
-        parse_str($uri->getQuery(),$this->queryParams);
+        parse_str($query, $this->queryParams);
 
+        $uri = $this->uri
+            ->withPath($path)
+            ->withQuery($query)
+            ->withFragment($fragment);
+
+        // 启用Host保护,修改请求目标,不应该影响Host
         return $this->withUri($uri, true);
     }
 
@@ -279,10 +280,10 @@ class Request extends Message implements RequestInterface
      */
     public function withUri(UriInterface $uri, $preserveHost = false)
     {
-        $result = $this->changeAttribute('uri',$uri);
-        parse_str($uri->getQuery(),$result->queryParams);
+        $self = $this->changeAttribute('uri', $uri);
+        parse_str($uri->getQuery(), $self->queryParams);
 
-        //如果开启host保护,原Host为空且新Uri包含Host时才更新
+        // 如果开启host保护,原Host为空且新Uri包含Host时才更新
         if (!$preserveHost) {
             $host = explode(',',$uri->getHost());
         } elseif ((!$this->hasHeader('host') || empty($this->getHeaderLine('host'))) && $uri->getHost() !== '') {
@@ -290,10 +291,10 @@ class Request extends Message implements RequestInterface
         }
 
         if(isset($host)){
-            $result->headers['host'] = $host;
+            $self->headers['host'] = $host;
         }
 
-        return $result;
+        return $self;
     }
 
     /**
@@ -314,7 +315,7 @@ class Request extends Message implements RequestInterface
      */
     public function withQueryParams(array $query)
     {
-        $result = $this->changeAttribute('queryParams',$query);
+        $result = $this->changeAttribute('queryParams', $query);
         //修改查询参数
         $result->uri = $result->uri->withQuery($query);
 
@@ -350,7 +351,7 @@ class Request extends Message implements RequestInterface
      */
     public function withCookieParams(array $cookies)
     {
-        return $this->changeAttribute('cookieParams',$cookies);
+        return $this->changeAttribute('cookieParams', $cookies);
     }
 
     /**
@@ -385,7 +386,7 @@ class Request extends Message implements RequestInterface
      */
     public function withUploadedFiles(array $uploadedFiles)
     {
-        return $this->changeAttribute('uploadFiles',$uploadedFiles);
+        return $this->changeAttribute('uploadFiles', $uploadedFiles);
     }
 
     /**
@@ -436,7 +437,7 @@ class Request extends Message implements RequestInterface
             throw new InvalidArgumentException('Parsed body value must be an array, an object, or null');
         }
 
-        return $this->changeAttribute('bodyParams',$data);
+        return $this->changeAttribute('bodyParams', $data);
     }
 
     /**
@@ -574,7 +575,7 @@ class Request extends Message implements RequestInterface
     /**
      * 注册默认body解析器
      */
-    protected function registerBaseBodyParsers()
+    public function registerBaseBodyParsers()
     {
         $xmlParse = $this->getXmlParser();
         $jsonParse = $this->getJsonParser();

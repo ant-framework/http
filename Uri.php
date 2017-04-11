@@ -335,7 +335,7 @@ class Uri implements UriInterface
      * 指定 # 后的参数
      *
      * @param string $fragment
-     * @return UriInterface
+     * @return Uri
      */
     public function withFragment($fragment)
     {
