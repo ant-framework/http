@@ -2,12 +2,12 @@
 namespace Test;
 
 use Ant\Http\Uri;
-use Ant\Http\Request;
+use Ant\Http\ServerRequest;
 
 class RequestTest extends \PHPUnit_Framework_TestCase
 {
     /**
-     * @return Request
+     * @return ServerRequest
      */
     public function createRequest()
     {
@@ -18,16 +18,16 @@ Accept: application/json
 Cookie: foo=bar;test_key=test_value\r\n\r\n
 EOT;
 
-        return Request::createFromRequestStr($requestString);
+        return ServerRequest::createFromRequestStr($requestString);
     }
 
     public function testCreateRequestFromString()
     {
         $requestString = "GET / HTTP/1.1\r\nHost: www.example.com\r\n\r\n";
 
-        $request = Request::createFromRequestStr($requestString);
-        $this->assertEquals($requestString,$request->__toString());
-        $this->assertInstanceOf(Request::class,$request);
+        $request = ServerRequest::createFromRequestStr($requestString);
+        $this->assertEquals($requestString, $request->__toString());
+        $this->assertInstanceOf(ServerRequest::class, $request);
     }
 
     public function testGetMethodAntWithMethod()
@@ -35,15 +35,15 @@ EOT;
         $request = $this->createRequest();
 
         //=================== Http动词是否为GET ===================//
-        $this->assertEquals('GET',$request->getMethod());
+        $this->assertEquals('GET', $request->getMethod());
         $this->assertTrue($request->isGet());
         $this->assertFalse($request->isPost());
 
         //=================== 修改HTTP动词后与原来的区别 ===================//
         $newRequest = $request->withMethod('POST');
-        $this->assertEquals('GET',$request->getMethod());
-        $this->assertEquals('POST',$newRequest->getMethod());
-        $this->assertNotEquals($newRequest,$request);
+        $this->assertEquals('GET', $request->getMethod());
+        $this->assertEquals('POST', $newRequest->getMethod());
+        $this->assertNotEquals($newRequest, $request);
     }
 
     public function testHeaderOverrideRequestMethod()
@@ -55,15 +55,15 @@ Host: www.example.com\r\n\r\n
 EOT;
 
         //================= 在Http头部重写请求方法后，是否会替换原来的请求方法 =================//
-        $request = Request::createFromRequestStr($requestString);
-        $this->assertEquals("PATCH",$request->getMethod());
-        $this->assertEquals("PATCH",$request->getHeaderLine('X-Http-Method-Override'));
-        $this->assertEquals("GET",$request->getOriginalMethod());
+        $request = ServerRequest::createFromRequestStr($requestString);
+        $this->assertEquals("PATCH", $request->getMethod());
+        $this->assertEquals("PATCH", $request->getHeaderLine('X-Http-Method-Override'));
+        $this->assertEquals("GET", $request->getOriginalMethod());
 
         //======================== 尝试在头部重写Http动词 ========================//
         $newRequest = $request->withHeader('X-Http-Method-Override','DELETE');
-        $this->assertEquals("DELETE",$newRequest->getMethod());
-        $this->assertEquals("GET",$request->getOriginalMethod());
+        $this->assertEquals("DELETE", $newRequest->getMethod());
+        $this->assertEquals("GET", $request->getOriginalMethod());
     }
 
     public function testBodyParamOverrideRequestMethod()
@@ -76,10 +76,10 @@ Host: www.example.com\r\n
 EOT;
 
         //================= 当请求为POST的时候尝试用post参数重写请求方法 =================//
-        $request = Request::createFromRequestStr($requestString);
-        $this->assertEquals("DELETE",$request->getMethod());
-        $this->assertEquals("POST",$request->getOriginalMethod());
-        $this->assertEquals("DELETE",$request->getBodyParam('_method'));
+        $request = ServerRequest::createFromRequestStr($requestString);
+        $this->assertEquals("DELETE", $request->getMethod());
+        $this->assertEquals("POST", $request->getOriginalMethod());
+        $this->assertEquals("DELETE", $request->getBodyParam('_method'));
     }
 
     /**
@@ -90,10 +90,10 @@ EOT;
         //================================== 测试Uri ==================================//
         $request = $this->createRequest();
         //获取Uri
-        $this->assertEquals('/Test',$request->getUri()->getPath());
-        $this->assertEquals('/Test?key=value#hello',$request->getRequestTarget());
-        $this->assertEquals('http://www.example.com:80/Test?key=value#hello',(string)$request->getUri());
-        $this->assertEquals(['key' => 'value'],$request->getQueryparams());
+        $this->assertEquals('/Test', $request->getUri()->getPath());
+        $this->assertEquals('/Test?key=value#hello', $request->getRequestTarget());
+        $this->assertEquals('http://www.example.com:80/Test?key=value#hello', (string)$request->getUri());
+        $this->assertEquals(['key' => 'value'], $request->getQueryparams());
 
         //================================== 测试请求目标对GET参数与Uri的影响 ==================================//
         //修改请求目标不应该影响主机名
@@ -129,8 +129,8 @@ EOT;
         $request = $this->createRequest();
         $cookie = $request->getCookieParams();
         $this->assertTrue(array_key_exists('foo',$cookie));
-        $this->assertEquals('bar',$cookie['foo']);
-        $this->assertEquals(['foo' => 'bar','test_key' => 'test_value'],$cookie);
+        $this->assertEquals('bar', $cookie['foo']);
+        $this->assertEquals(['foo' => 'bar','test_key' => 'test_value'], $cookie);
 
         //================================== 设置请求Cookie ==================================//
         $cookie = [
@@ -163,7 +163,7 @@ Content-Type: application/json
 Host: www.example.com\r\n
 {"foo":"bar","fii":"bae"}
 EOT;
-        $request = Request::createFromRequestStr($requestString);
+        $request = ServerRequest::createFromRequestStr($requestString);
 
         $this->assertEquals('bar', $request->getBodyParam('foo'));
         $this->assertEquals('bae', $request->getBodyParam('fii'));
@@ -182,7 +182,7 @@ Host: www.example.com\r\n
 <?xml version="1.0"?>
 <xml><foo>bar</foo><fii>bae</fii></xml>
 EOT;
-        $request = Request::createFromRequestStr($requestString);
+        $request = ServerRequest::createFromRequestStr($requestString);
 
         $this->assertEquals('bar', $request->getBodyParam('foo'));
         $this->assertEquals('bae', $request->getBodyParam('fii'));
@@ -200,7 +200,7 @@ Content-Type: application/x-www-form-urlencoded
 Host: www.example.com\r\n
 foo=bar&fii=bae
 EOT;
-        $request = Request::createFromRequestStr($requestString);
+        $request = ServerRequest::createFromRequestStr($requestString);
 
         $this->assertEquals('bar', $request->getBodyParam('foo'));
         $this->assertEquals('bae', $request->getBodyParam('fii'));
@@ -226,7 +226,7 @@ Content-Disposition: form-data; name="fii"
 bae
 ------WebKitFormBoundaryF7ujiYJ1r6fEQ1Qu--\r\n\r\n
 EOT;
-        $request = Request::createFromRequestStr($requestString);
+        $request = ServerRequest::createFromRequestStr($requestString);
 
         $this->assertEquals('bar', $request->getBodyParam('foo'));
         $this->assertEquals('bae', $request->getBodyParam('fii'));
@@ -238,7 +238,7 @@ EOT;
      */
     public function testToModifyTheEffectsOfBodyParams()
     {
-        $request = (new Request('POST','http://www.example.com'))
+        $request = (new ServerRequest('POST','http://www.example.com'))
             ->withHeader('Content-Type','application/json')
             ->withParsedBody([
                 'foo'   =>  'bar'

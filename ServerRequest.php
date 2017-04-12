@@ -1,118 +1,134 @@
 <?php
 namespace Ant\Http;
 
+use RuntimeException;
+use InvalidArgumentException;
 use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
-/**
- * Todo 单元测试
- * Class ServerRequest
- * @package Ant\Http
- * @see http://www.php-fig.org/psr/psr-7/
- */
 class ServerRequest extends Request implements ServerRequestInterface
 {
     /**
-     * 服务器和执行环境信息
+     * cookie参数
+     *
+     * @var array
+     */
+    protected $cookieParams = [];
+
+    /**
+     * 查询参数
+     *
+     * @var array
+     */
+    protected $queryParams = [];
+
+    /**
+     * body 参数
+     *
+     * @var array|object|null
+     */
+    protected $bodyParams = null;
+
+    /**
+     * http上传文件 \Psr\Http\Message\UploadedFileInterface 实例
+     *
+     * @var array
+     */
+    protected $uploadFiles = [];
+
+    /**
+     * Server参数
      *
      * @var array
      */
     protected $serverParams = [];
 
     /**
-     * 属性
+     * body 解析器 根据subtype进行调用
      *
      * @var array
      */
-    protected $attributes = [];
+    protected $bodyParsers = [];
 
     /**
-     * @var string
-     */
-    protected $routePath;
-
-    /**
-     * @var string
-     */
-    protected $routeSuffix;
-
-    /**
-     * 在“$_SERVER”中不是以“HTTP_”开头的Http头
+     * body是否使用过
      *
-     * @var array
+     * @var bool
      */
-    protected $special = [
-        'CONTENT_TYPE' => 1,
-        'CONTENT_LENGTH' => 1,
-        'PHP_AUTH_USER' => 1,
-        'PHP_AUTH_PW' => 1,
-        'PHP_AUTH_DIGEST' => 1,
-        'AUTH_TYPE' => 1,
-    ];
+    protected $usesBody = false;
 
     /**
-     * ServerRequest constructor.
+     * 通过Tcp输入流解析Http请求
+     *
+     * @param string $receiveBuffer
+     * @return static
+     */
+    final public static function createFromRequestStr($receiveBuffer)
+    {
+        if (!is_string($receiveBuffer)) {
+            throw new \InvalidArgumentException('Request must be string');
+        }
+
+        list($startLine, $headers, $bodyBuffer) = static::parseMessage($receiveBuffer);
+
+        // 解析起始行
+        list($method, $requestTarget, $protocol) = explode(' ', $startLine, 3);
+        $protocolVersion = str_replace('HTTP/', '', $protocol);
+
+        // 获取Uri
+        $uri = (isset($headers['host']) ? 'http://'.$headers['host'][0] : '') . $requestTarget;
+
+        // 将Body写入流
+        $body = ($method == 'GET')
+            ? new RequestBody(fopen('php://temp','r+'))
+            : RequestBody::createFrom($bodyBuffer);
+
+        $request = new ServerRequest($method, $uri, $headers, $body, $protocolVersion);
+        // 注册Body基础解析器
+        $request->registerBaseBodyParsers();
+
+        return $request;
+    }
+
+    /**
+     * @param string $method
+     * @param string $uri
+     * @param array $headers
+     * @param null $body
+     * @param string $protocolVersion
      * @param array $serverParams
-     * @param array $cookieParams
-     * @param array $queryParams
-     * @param array $bodyParams
-     * @param array $uploadFiles
-     * @param StreamInterface|null $body
      */
     public function __construct(
-        array $serverParams = null,
-        array $cookieParams = null,
-        array $queryParams = null,
-        array $bodyParams = null,
-        array $uploadFiles = null,
-        StreamInterface $body = null
-    ){
-        $this->serverParams = $serverParams ?: $_SERVER;
-        $this->cookieParams = $cookieParams ?: $_COOKIE;
-        $this->queryParams = $queryParams ?: $_GET;
-        $this->body = $body ?: RequestBody::createFromCgi();
-        $this->bodyParams = $bodyParams ?: $_POST;
-        $this->uploadFiles = UploadedFile::parseUploadedFiles($uploadFiles ?: $_FILES);
+        $method,
+        $uri,
+        array $headers = [],
+        $body = null,
+        $protocolVersion = '1.1',
+        array $serverParams = []
+    ) {
+        $this->serverParams = $serverParams;
 
-        $this->registerBaseBodyParsers();
+        parent::__construct($method, $uri, $headers, $body, $protocolVersion);
 
-        foreach ($this->serverParams as $key => $value) {
-            //提取HTTP头
-            if (isset($this->special[$key]) || strpos($key, 'HTTP_') === 0) {
-                $key = strtolower(str_replace('_', '-', $key));
-                $key = (strpos($key, 'http-') === 0) ? substr($key, 5) : $key;
-                $this->headers[$key] = explode(',', $value);
-            }
-        }
-
-        $this->uri = Uri::createFromEnvironment($this->serverParams);
-
-        $this->parseRequestPath();
+        // 解析Get与Cookie参数
+        parse_str($this->uri->getQuery(), $this->queryParams);
+        parse_str(str_replace([';','; '], '&', $this->getHeaderLine('Cookie')), $this->cookieParams);
     }
 
     /**
-     * 获取Http动词
-     *
      * @return string
      */
-    public function getMethod()
+    public function __toString()
     {
-        if ($this->method === null) {
-            $this->method = isset($this->serverParams['REQUEST_METHOD']) ? $this->serverParams['REQUEST_METHOD'] : 'GET';
-
-            if ($customMethod = $this->getHeaderLine('X-Http-Method-Override')) {
-                $this->method = $customMethod;
-            } elseif ($this->method === 'POST') {
-                $this->method = $this->getBodyParam('_method') ?: 'POST';
-            }
+        if ($cookie = $this->getCookieParams()) {
+            //设置Cookie
+            $this->headers['cookie'] = str_replace('&','; ',http_build_query($this->getCookieParams()));
         }
 
-        return $this->method;
+        return parent::__toString();
     }
 
     /**
-     * 获取server参数
-     *
      * @return array
      */
     public function getServerParams()
@@ -121,113 +137,223 @@ class ServerRequest extends Request implements ServerRequestInterface
     }
 
     /**
-     * @param $key
-     * @return array|null
-     */
-    public function getServerParam($key = null)
-    {
-        if($key === null){
-            return $this->serverParams;
-        }
-
-        return isset($this->serverParams[$key]) ? $this->serverParams[$key] : null;
-    }
-
-    /**
-     * 获取GET参数
+     * 获取cookie参数
      *
-     * @param null $key
-     * @return array|null
+     * @return array
      */
-    public function get($key = null)
+    public function getCookieParams()
     {
-        $get = $this->getQueryParams();
-        if ($key === null) {
-            return $get;
-        }
-
-        return isset($get[$key]) ? $get[$key] : null;
+        return $this->cookieParams;
     }
 
     /**
-     * 获取POST参数,仅在请求方式为POST时有效
+     * 设置cookie参数
+     *
+     * @param array $cookies
+     * @return Request
+     */
+    public function withCookieParams(array $cookies)
+    {
+        return $this->changeAttribute('cookieParams', $cookies);
+    }
+
+    /**
+     * 获取查询参数
+     *
+     * @return array
+     */
+    public function getQueryParams()
+    {
+        return $this->queryParams;
+    }
+
+    /**
+     * 设置查询参数
+     *
+     * @param array $query
+     * @return Request
+     */
+    public function withQueryParams(array $query)
+    {
+        $result = $this->changeAttribute('queryParams', $query);
+        //修改查询参数
+        $result->uri = $result->uri->withQuery($query);
+
+        return $result;
+    }
+
+    /**
+     * 向get中添加参数
+     *
+     * @param array $query
+     * @return Request
+     */
+    public function withAddedQueryParams(array $query)
+    {
+        return $this->withQueryParams(array_merge($this->getQueryParams(), $query));
+    }
+
+    /**
+     * 添加body数据
+     *
+     * @param StreamInterface $body
+     * @return $this|Message
+     */
+    public function withBody(StreamInterface $body)
+    {
+        //当Body被修改后,允许重新解析body
+        $this->usesBody = false;
+
+        return parent::withBody($body);
+    }
+
+    /**
+     * 获取上传文件信息
+     *
+     * @return array
+     */
+    public function getUploadedFiles()
+    {
+        return $this->uploadFiles;
+    }
+
+    /**
+     * 添加上传文件信息
+     *
+     * @param array $uploadedFiles
+     * @return Request
+     */
+    public function withUploadedFiles(array $uploadedFiles)
+    {
+        return $this->changeAttribute('uploadFiles', $uploadedFiles);
+    }
+
+    /**
+     * 获取body解析结果
+     *
+     * @return array|null|object
+     */
+    public function getParsedBody()
+    {
+        // 解析成功直接返回解析结果,如果解析后的参数为空,不允许进行第二次解析
+        if (!empty($this->bodyParams) || $this->usesBody) {
+            return $this->bodyParams;
+        }
+
+        $this->usesBody = true;
+
+        if ($contentType = $this->getContentType()) {
+            // 用自定义方法解析Body内容
+            if ($this->body->getSize() !== 0 && isset($this->bodyParsers[$contentType])) {
+                // 调用body解析函数
+                $parsed = call_user_func_array(
+                    $this->bodyParsers[$contentType],
+                    [$this->getBody()->__toString(), $this]
+                );
+
+                if (!(is_null($parsed) || is_object($parsed) || is_array($parsed))) {
+                    throw new RuntimeException(
+                        'Request body media type parser return value must be an array, an object, or null'
+                    );
+                }
+
+                return $this->bodyParams = $parsed;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 获取body参数
      *
      * @param null $key
      * @return array|null|object
      */
-    public function post($key = null)
+    public function getBodyParam($key = null)
     {
-        if ($this->serverParams['REQUEST_METHOD'] === 'POST') {
-            return $this->getBodyParam($key);
+        if (is_null($key)) {
+            return $this->getParsedBody();
         }
 
-        return $key ? [] : null;
+        $params = $this->getParsedBody();
+
+        if (is_array($params) && array_key_exists($key,$params)) {
+            return $params[$key];
+        } elseif (is_object($params) && property_exists($params, $key)) {
+            return $params->$key;
+        }
+
+        return null;
     }
 
     /**
-     * 获取cookie参数
+     * 设置body解析结果
      *
-     * @param null $key
-     * @return array|null
+     * @param array|null|object $data
+     * @return Request
      */
-    public function cookie($key = null)
+    public function withParsedBody($data)
     {
-        $cookie = $this->getCookieParams();
-        if($key === null){
-            return $cookie;
+        if (!(is_null($data) || is_array($data) || is_object($data))) {
+            throw new InvalidArgumentException('Parsed body value must be an array, an object, or null');
         }
 
-        return isset($cookie[$key]) ? $cookie[$key] : null;
+        return $this->changeAttribute('bodyParams', $data);
     }
 
     /**
-     * @return string
-     */
-    public function getRoutePath()
-    {
-        return $this->routePath;
-    }
-
-    /**
-     * @return string
-     */
-    public function getRouteSuffix()
-    {
-        return $this->routeSuffix;
-    }
-
-    /**
-     * 解析脚本当前路径
+     * 获取请求的body类型
      *
-     * @return array
+     * @return null|string
      */
-    protected function parseRequestPath()
+    public function getContentType()
     {
-        //获取请求资源的路径
-        $requestScriptName = $this->getServerParam('SCRIPT_NAME');
-        $requestScriptDir = dirname($requestScriptName);
-        $routePath = $this->getUri()->getPath();
-        $routeSuffix = null;
+        $result = $this->getHeader('Content-Type');
+        $contentType = $result ? $result[0] : null;
 
-        //获取基础路径
-        if (stripos($routePath, $requestScriptName) === 0) {
-            $basePath = $requestScriptName;
-        } elseif ($requestScriptDir !== '/' && stripos($routePath, $requestScriptDir) === 0) {
-            $basePath = $requestScriptDir;
+        if ($contentType) {
+            $contentTypeParts = preg_split('/\s*[;,]\s*/', $contentType);
+
+            $contentType = strtolower($contentTypeParts[0]);
         }
 
-        if(isset($basePath)) {
-            //获取请求的路径
-            $routePath = '/'.trim(substr($routePath, strlen($basePath)), '/');
+        return $contentType;
+    }
+
+    /**
+     * 获取内容长度
+     *
+     * @return int|null
+     */
+    public function getContentLength()
+    {
+        $result = $this->getHeader('Content-Length');
+
+        return $result ? (int)$result[0] : null;
+    }
+
+    /**
+     * 设置body解析器
+     *
+     * @param $subtype string
+     * @param $parsers callable
+     */
+    public function setBodyParsers($subtype, $parsers)
+    {
+        if (!is_callable($parsers)) {
+            throw new InvalidArgumentException('Body parsers must be a callable');
         }
 
-        // 取得请求资源的格式(后缀)
-        if (false !== ($pos = strrpos($routePath,'.'))) {
-            $routeSuffix = substr($routePath, $pos + 1);
-            $routePath = strstr($routePath, '.', true);
-        }
+        $this->usesBody = false;
+        $this->bodyParsers[$subtype] = $parsers;
+    }
 
-        $this->routePath = $routePath;
-        $this->routeSuffix = $routeSuffix;
+    /**
+     * 注册默认body解析器
+     */
+    public function registerBaseBodyParsers()
+    {
+        $this->bodyParsers = BodyParsers::create($this);
     }
 }

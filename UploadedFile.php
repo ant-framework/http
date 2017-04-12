@@ -43,17 +43,17 @@ class UploadedFile implements UploadedFileInterface
 
             $parsed[$field] = [];
             if (is_array($uploadedFile['error'])) {
-                //详见手册 [PHP多文件上传]
+                // 详见手册 [PHP多文件上传]
                 $subArray = [];
                 $count = count($uploadedFile['error']);
                 $fileKey = array_keys($uploadedFile);
                 for ($fileIdx = 0;$fileIdx < $count;$fileIdx++) {
-                    foreach($fileKey as $key){
+                    foreach ($fileKey as $key) {
                         $subArray[$fileIdx][$key] = $uploadedFile[$key][$fileIdx];
                     }
                 }
                 $parsed[$field] = static::parseUploadedFiles($subArray);
-            }else{
+            } else {
                 $parsed[$field] = new static($uploadedFile);
             }
         }
