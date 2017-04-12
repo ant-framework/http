@@ -20,18 +20,21 @@ class Body extends Stream
     /**
      * 通过字符串创建一个流
      *
-     * @param string $data
+     * @param string $resource
      * @return static
      */
-    public static function createFromString($data)
+    public static function createFrom($resource)
     {
-        if (!is_string($data)) {
+        if (!is_scalar($resource)) {
             throw new \InvalidArgumentException("Parameter must be a string");
         }
 
-        $stream = fopen("php://temp","w+");
-        fwrite($stream,$data);
-        rewind($stream);
+        $stream = fopen('php://temp', 'r+');
+
+        if ($resource !== '') {
+            fwrite($stream, $resource);
+            fseek($stream, 0);
+        }
 
         return new static($stream);
     }

@@ -5,9 +5,12 @@ use RuntimeException;
 use InvalidArgumentException;
 use Psr\Http\Message\UriInterface;
 use Psr\Http\Message\StreamInterface;
-use Ant\Http\Interfaces\RequestInterface;
+use Psr\Http\Message\RequestInterface;
 
 /**
+ * Todo 将现有ServerRequest更改为CgiRequest
+ * Todo 重构ServerRequest
+ *
  * Class Request
  * @package Ant\Http
  * @see http://www.php-fig.org/psr/psr-7/
@@ -94,7 +97,7 @@ class Request extends Message implements RequestInterface
         // 将Body写入流
         $body = ($method == 'GET')
             ? new RequestBody(fopen('php://temp','r+'))
-            : RequestBody::createFromString($bodyBuffer);
+            : RequestBody::createFrom($bodyBuffer);
 
         $request = new Request($method, $uri, $headers, $body, $protocolVersion);
         // 注册Body基础解析器
@@ -118,14 +121,23 @@ class Request extends Message implements RequestInterface
         $body = null,
         $protocolVersion = '1.1'
     ) {
+        if (!$uri instanceof UriInterface) {
+            $uri = new Uri($uri);
+        }
+
         $this->method = $method;
-        $this->uri = new Uri($uri);
+        $this->uri = $uri;
         $this->headers = $headers;
         $this->body = $body ?: new Body();
         $this->protocolVersion = $protocolVersion;
 
+        // 如果没设置Host,尝试通过Uri获取
+        if (!$this->hasHeader("host")) {
+            $this->updateHostFromUri();
+        }
+
         //解析GET与Cookie参数
-        parse_str($this->uri->getQuery(),$this->queryParams);
+        parse_str($this->uri->getQuery(), $this->queryParams);
         parse_str(str_replace([';','; '], '&', $this->getHeaderLine('Cookie')), $this->cookieParams);
     }
 
@@ -137,14 +149,6 @@ class Request extends Message implements RequestInterface
      */
     public function __toString()
     {
-        if (!$this->hasHeader('host')) {
-            if (!$host = $this->getUri()->getHost()) {
-                // 请求的host不能为空
-                throw new RuntimeException('Requested host cannot be empty');
-            }
-            $this->headers['host'] = $host;
-        }
-
         if ($cookie = $this->getCookieParams()) {
             //设置Cookie
             $this->headers['cookie'] = str_replace('&','; ',http_build_query($this->getCookieParams()));
@@ -188,7 +192,7 @@ class Request extends Message implements RequestInterface
             $method = $customMethod;
         }
 
-        return $method;
+        return strtoupper($method);
     }
 
     /**
@@ -285,13 +289,13 @@ class Request extends Message implements RequestInterface
 
         // 如果开启host保护,原Host为空且新Uri包含Host时才更新
         if (!$preserveHost) {
-            $host = explode(',',$uri->getHost());
+            $host = explode(',', $uri->getHost());
         } elseif ((!$this->hasHeader('host') || empty($this->getHeaderLine('host'))) && $uri->getHost() !== '') {
-            $host = explode(',',$uri->getHost());
+            $host = explode(',', $uri->getHost());
         }
 
-        if(isset($host)){
-            $self->headers['host'] = $host;
+        if (isset($host)) {
+            $self->updateHostFromUri();
         }
 
         return $self;
@@ -396,7 +400,7 @@ class Request extends Message implements RequestInterface
      */
     public function getParsedBody()
     {
-        //解析成功直接返回解析结果,如果解析后的参数为空,不允许进行第二次解析
+        // 解析成功直接返回解析结果,如果解析后的参数为空,不允许进行第二次解析
         if (!empty($this->bodyParams) || $this->usesBody) {
             return $this->bodyParams;
         }
@@ -404,12 +408,12 @@ class Request extends Message implements RequestInterface
         $this->usesBody = true;
 
         if ($contentType = $this->getContentType()) {
-            //用自定义方法解析Body内容
+            // 用自定义方法解析Body内容
             if ($this->body->getSize() !== 0 && isset($this->bodyParsers[$contentType])) {
-                //调用body解析函数
-                $parsed = call_user_func(
+                // 调用body解析函数
+                $parsed = call_user_func_array(
                     $this->bodyParsers[$contentType],
-                    $this->getBody()->__toString()
+                    [$this->getBody()->__toString(), $this]
                 );
 
                 if (!(is_null($parsed) || is_object($parsed) || is_array($parsed))) {
@@ -433,11 +437,89 @@ class Request extends Message implements RequestInterface
      */
     public function withParsedBody($data)
     {
-        if(!(is_null($data) || is_array($data) || is_object($data))){
+        if (!(is_null($data) || is_array($data) || is_object($data))) {
             throw new InvalidArgumentException('Parsed body value must be an array, an object, or null');
         }
 
         return $this->changeAttribute('bodyParams', $data);
+    }
+
+    /**
+     * 获取body参数
+     *
+     * @param null $key
+     * @return array|null|object
+     */
+    public function getBodyParam($key = null)
+    {
+        if (is_null($key)) {
+            return $this->getParsedBody();
+        }
+
+        $params = $this->getParsedBody();
+
+        if (is_array($params) && array_key_exists($key,$params)) {
+            return $params[$key];
+        } elseif (is_object($params) && property_exists($params, $key)) {
+            return $params->$key;
+        }
+
+        return null;
+    }
+
+    /**
+     * 获取请求的body类型
+     *
+     * @return null|string
+     */
+    public function getContentType()
+    {
+        $result = $this->getHeader('Content-Type');
+        $contentType = $result ? $result[0] : null;
+
+        if ($contentType) {
+            $contentTypeParts = preg_split('/\s*[;,]\s*/', $contentType);
+
+            $contentType = strtolower($contentTypeParts[0]);
+        }
+
+        return $contentType;
+    }
+
+    /**
+     * 获取内容长度
+     *
+     * @return int|null
+     */
+    public function getContentLength()
+    {
+        $result = $this->getHeader('Content-Length');
+
+        return $result ? (int)$result[0] : null;
+    }
+
+    /**
+     * 设置body解析器
+     *
+     * @param $subtype string
+     * @param $parsers callable
+     */
+    public function setBodyParsers($subtype, $parsers)
+    {
+        if (!is_callable($parsers)) {
+            throw new InvalidArgumentException('Body parsers must be a callable');
+        }
+
+        $this->usesBody = false;
+        $this->bodyParsers[$subtype] = $parsers;
+    }
+
+    /**
+     * 注册默认body解析器
+     */
+    public function registerBaseBodyParsers()
+    {
+        $this->bodyParsers = BodyParsers::create($this);
     }
 
     /**
@@ -503,173 +585,20 @@ class Request extends Message implements RequestInterface
     }
 
     /**
-     * 获取body参数
-     *
-     * @param null $key
-     * @return array|null|object
+     * 通过Uri更新请求主机名
      */
-    public function getBodyParam($key = null)
+    protected function updateHostFromUri()
     {
-        if (is_null($key)) {
-            return $this->getParsedBody();
+        $host = $this->uri->getHost();
+
+        if ($host == '') {
+            return;
         }
 
-        $params = $this->getParsedBody();
-
-        if (is_array($params) && array_key_exists($key,$params)) {
-            return $params[$key];
-        } elseif (is_object($params) && property_exists($params, $key)) {
-            return $params->$key;
+        if (($port = $this->uri->getPort()) !== null) {
+            $host .= ':' . $port;
         }
 
-        return null;
-    }
-
-    /**
-     * 获取请求的body类型
-     *
-     * @return null|string
-     */
-    public function getContentType()
-    {
-        $result = $this->getHeader('Content-Type');
-        $contentType = $result ? $result[0] : null;
-
-        if ($contentType) {
-            $contentTypeParts = preg_split('/\s*[;,]\s*/', $contentType);
-
-            $contentType = strtolower($contentTypeParts[0]);
-        }
-
-        return $contentType;
-    }
-
-    /**
-     * 获取内容长度
-     *
-     * @return int|null
-     */
-    public function getContentLength()
-    {
-        $result = $this->getHeader('Content-Length');
-
-        return $result ? (int)$result[0] : null;
-    }
-
-    /**
-     * 设置body解析器
-     *
-     * @param $subtype string
-     * @param $parsers callable
-     */
-    public function setBodyParsers($subtype,$parsers)
-    {
-        if (!is_callable($parsers)) {
-            throw new InvalidArgumentException('Body parsers must be a callable');
-        }
-
-        $this->usesBody = false;
-        $this->bodyParsers[$subtype] = $parsers;
-    }
-
-    /**
-     * 注册默认body解析器
-     */
-    public function registerBaseBodyParsers()
-    {
-        $xmlParse = $this->getXmlParser();
-        $jsonParse = $this->getJsonParser();
-
-        $this->bodyParsers = [
-            // 解析Xml数据,
-            'text/xml'                          =>  $xmlParse,
-            'application/xml'                   =>  $xmlParse,
-
-            // 解析Json数据
-            'text/json'                         =>  $jsonParse,
-            'application/json'                  =>  $jsonParse,
-
-            // 解析表单数据
-            'multipart/form-data'               =>  $this->getFormParser(),
-
-            // 解析Url encode格式
-            'application/x-www-form-urlencoded' =>  $this->getUrlEncodeParser(),
-        ];
-    }
-
-    protected function getJsonParser()
-    {
-        return function ($input) {
-            $data = json_decode($input, true);
-
-            if ($data === null && json_last_error() !== JSON_ERROR_NONE) {
-                throw new \UnexpectedValueException(json_last_error_msg(), json_last_error());
-            }
-
-            return $data;
-        };
-    }
-
-    protected function getXmlParser()
-    {
-        return function ($input) {
-            $backup = libxml_disable_entity_loader(true);
-            $data = simplexml_load_string($input);
-            libxml_disable_entity_loader($backup);
-            return $data;
-        };
-    }
-
-    protected function getUrlEncodeParser()
-    {
-        return function ($input) {
-            parse_str($input,$data);
-            return $data;
-        };
-    }
-
-    protected function getFormParser()
-    {
-        return function ($input) {
-            if (!preg_match('/boundary="?(\S+)"?/', $this->getHeaderLine('content-type'), $match)) {
-                return null;
-            }
-
-            $data = [];
-            $bodyBoundary = '--' . $match[1] . "\r\n";
-            // 将最后一行分界符剔除
-            $body = substr($input, 0 ,$this->getBody()->getSize() - (strlen($bodyBoundary) + 4));
-            foreach (explode($bodyBoundary,$body) as $buffer) {
-                if ($buffer == '') {
-                    continue;
-                }
-                // 将Body头信息跟内容拆分
-                list($header, $bufferBody) = explode("\r\n\r\n", $buffer, 2);
-                $bufferBody = substr($bufferBody, 0, -2);
-                foreach (explode("\r\n", $header) as $item) {
-                    list($headerName, $headerData) = explode(":", $item, 2);
-                    $headerName = trim(strtolower($headerName));
-                    // 将参数名与值进行配对
-                    if ($headerName == 'content-disposition') {
-                        if (preg_match('/name="(.*?)"; filename="(.*?)"$/', $headerData, $match)) {
-                            $file = new Stream(fopen('php://temp','w'));
-                            $file->write($bufferBody);
-                            $file->rewind();
-
-                            $this->uploadFiles[$match[1]] = new UploadedFile([
-                                'stream'    => $file,
-                                'name'      => $match[1],
-                                'size'      => $file->getSize()
-                            ]);
-                            $uploadedFiles[$match[1]] = $file;
-                        } elseif (preg_match('/name="(.*?)"$/', $headerData, $match)) {
-                            $data[$match[1]] = $bufferBody;
-                        }
-                    }
-                }
-            }
-
-            return $data;
-        };
+        $this->headers['host'] = [$host];
     }
 }

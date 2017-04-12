@@ -96,26 +96,28 @@ EOT;
         $this->assertEquals(['key' => 'value'],$request->getQueryparams());
 
         //================================== 测试请求目标对GET参数与Uri的影响 ==================================//
-        //修改请求目标
-        $newRequest = $request->withRequestTarget('/Demo?name=alex&age=18');
-        $this->assertEquals('/Demo',  $newRequest->getUri()->getPath());
+        //修改请求目标不应该影响主机名
+        $newRequest = $request->withRequestTarget('http://test.com/Demo?name=alex&age=18');
+        $this->assertEquals('/Demo', $newRequest->getUri()->getPath());
         $this->assertEquals('/Demo?name=alex&age=18', $newRequest->getRequestTarget());
         $this->assertEquals('http://www.example.com:80/Demo?name=alex&age=18', (string)$newRequest->getUri());
         $this->assertEquals(['name' => 'alex','age' => '18'], $newRequest->getQueryParams());
+        $this->assertEquals("www.example.com", $newRequest->getHeaderLine("Host"));
 
         //================================== 测试GET参数对请求Uri的影响 ==================================//
         //修改Get参数
         $newRequest = $request->withQueryParams(['foo' => 'bar']);
-        $this->assertEquals('/Test?foo=bar#hello',$newRequest->getRequestTarget());
-        $this->assertEquals(['foo' => 'bar'],$newRequest->getQueryParams());
-        $this->assertEquals('http://www.example.com:80/Test?foo=bar#hello',(string)$newRequest->getUri());
+        $this->assertEquals('/Test?foo=bar#hello', $newRequest->getRequestTarget());
+        $this->assertEquals(['foo' => 'bar'], $newRequest->getQueryParams());
+        $this->assertEquals('http://www.example.com:80/Test?foo=bar#hello', (string)$newRequest->getUri());
 
         //================================== 测试Uri对请求目标的影响 ==================================//
         //修改Uri
         $newRequest = $request->withUri(new Uri('http://www.domain.com/foobar?test_key=test_value'));
-        $this->assertEquals('/foobar?test_key=test_value',$newRequest->getRequestTarget());
-        $this->assertEquals('/foobar',$newRequest->getUri()->getPath());
-        $this->assertEquals(['test_key' => 'test_value'],$newRequest->getQueryParams());
+        $this->assertEquals('/foobar?test_key=test_value', $newRequest->getRequestTarget());
+        $this->assertEquals('/foobar', $newRequest->getUri()->getPath());
+        $this->assertEquals(['test_key' => 'test_value'], $newRequest->getQueryParams());
+        $this->assertEquals('www.domain.com:80', $newRequest->getHeaderLine("Host"));
 
         //================================== 测试输入非法参数 ==================================//
         $request->withRequestTarget(['test']);
@@ -138,8 +140,14 @@ EOT;
         ];
 
         $newRequest = $request->withCookieParams($cookie);
-        $this->assertEquals($cookie,$newRequest->getCookieParams());
-        $this->assertEquals("GET /Test?key=value#hello HTTP/1.1\r\nHost: www.example.com\r\nAccept: application/json\r\nCookie: foo=bar; key=value; PHPSESSID=test\r\n\r\n",(string)$newRequest);
+        $this->assertEquals($cookie, $newRequest->getCookieParams());
+        $this->assertEquals(
+            "GET /Test?key=value#hello HTTP/1.1\r\n".
+            "Host: www.example.com\r\n".
+            "Accept: application/json\r\n".
+            "Cookie: foo=bar; key=value; PHPSESSID=test\r\n\r\n",
+            (string)$newRequest
+        );
     }
 
     //Todo 测试解析Body文件
@@ -157,9 +165,9 @@ Host: www.example.com\r\n
 EOT;
         $request = Request::createFromRequestStr($requestString);
 
-        $this->assertEquals('bar',$request->getBodyParam('foo'));
-        $this->assertEquals('bae',$request->getBodyParam('fii'));
-        $this->assertEquals(['foo' => 'bar','fii' => 'bae'],$request->getParsedBody());
+        $this->assertEquals('bar', $request->getBodyParam('foo'));
+        $this->assertEquals('bae', $request->getBodyParam('fii'));
+        $this->assertEquals(['foo' => 'bar','fii' => 'bae'], $request->getParsedBody());
     }
 
     /**
@@ -176,9 +184,9 @@ Host: www.example.com\r\n
 EOT;
         $request = Request::createFromRequestStr($requestString);
 
-        $this->assertEquals('bar',$request->getBodyParam('foo'));
-        $this->assertEquals('bae',$request->getBodyParam('fii'));
-        $this->assertInstanceOf(\SimpleXMLElement::class,$request->getParsedBody());
+        $this->assertEquals('bar', $request->getBodyParam('foo'));
+        $this->assertEquals('bae', $request->getBodyParam('fii'));
+        $this->assertInstanceOf(\SimpleXMLElement::class, $request->getParsedBody());
     }
 
     /**
@@ -194,9 +202,9 @@ foo=bar&fii=bae
 EOT;
         $request = Request::createFromRequestStr($requestString);
 
-        $this->assertEquals('bar',$request->getBodyParam('foo'));
-        $this->assertEquals('bae',$request->getBodyParam('fii'));
-        $this->assertEquals(['foo' => 'bar','fii' => 'bae'],$request->getParsedBody());
+        $this->assertEquals('bar', $request->getBodyParam('foo'));
+        $this->assertEquals('bae', $request->getBodyParam('fii'));
+        $this->assertEquals(['foo' => 'bar','fii' => 'bae'], $request->getParsedBody());
     }
 
     /**
@@ -220,9 +228,9 @@ bae
 EOT;
         $request = Request::createFromRequestStr($requestString);
 
-        $this->assertEquals('bar',$request->getBodyParam('foo'));
-        $this->assertEquals('bae',$request->getBodyParam('fii'));
-        $this->assertEquals(['foo' => 'bar','fii' => 'bae'],$request->getParsedBody());
+        $this->assertEquals('bar', $request->getBodyParam('foo'));
+        $this->assertEquals('bae', $request->getBodyParam('fii'));
+        $this->assertEquals(['foo' => 'bar','fii' => 'bae'], $request->getParsedBody());
     }
 
     /**
@@ -236,8 +244,8 @@ EOT;
                 'foo'   =>  'bar'
             ]);
 
-        $this->assertEquals('bar',$request->getBodyParam('foo'));
-        $this->assertNotEquals("POST / HTTP/1.1\r\nContent-Type: application/json\r\nHost: www.example.com\r\n\r\n{\"foo\":\"bar\"}",$request->__toString());
-        $this->assertEquals("POST / HTTP/1.1\r\nContent-Type: application/json\r\nHost: www.example.com\r\n\r\n",$request->__toString());
+        $this->assertEquals('bar', $request->getBodyParam('foo'));
+        $this->assertNotEquals("POST / HTTP/1.1\r\nHost: www.example.com:80\r\nContent-Type: application/json\r\n\r\n{\"foo\":\"bar\"}", $request->__toString());
+        $this->assertEquals("POST / HTTP/1.1\r\nHost: www.example.com:80\r\nContent-Type: application/json\r\n\r\n", $request->__toString());
     }
 }

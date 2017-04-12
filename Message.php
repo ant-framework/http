@@ -64,7 +64,6 @@ abstract class Message implements MessageInterface
         list($headerBuffer, $body) = explode("\r\n\r\n", $message, 2);
 
         $headerLines = explode("\r\n", $headerBuffer);
-
         $startLine = array_shift($headerLines);
 
         $headers = [];
@@ -195,7 +194,7 @@ abstract class Message implements MessageInterface
     {
         if ($this->hasHeader($name)) {
             $value = (is_array($value))
-                ? array_merge($this->getHeader($name),$value)
+                ? array_merge($this->getHeader($name), $value)
                 : implode(',',$this->getHeader($name)).','.$value;
         }
 

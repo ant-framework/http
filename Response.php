@@ -3,7 +3,7 @@ namespace Ant\Http;
 
 use InvalidArgumentException;
 use Psr\Http\Message\StreamInterface;
-use Ant\Http\Interfaces\ResponseInterface;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * Todo 响应分块
@@ -229,7 +229,7 @@ class Response extends Message implements ResponseInterface
         $response = new static(
             $statusCode,
             $headers,
-            Body::createFromString($bodyBuffer),
+            Body::createFrom($bodyBuffer),
             $responsePhrase,
             $protocol
         );

@@ -65,23 +65,6 @@ class Stream implements StreamInterface
     ];
 
     /**
-     * @param $resource
-     * @return static
-     */
-    public static function createFrom($resource)
-    {
-        // Todo 获取各类Stream
-        if (is_scalar($resource)) {
-            $stream = fopen('php://temp', 'r+');
-            if ($resource !== '') {
-                fwrite($stream, $resource);
-                fseek($stream, 0);
-            }
-            return new static($stream);
-        }
-    }
-
-    /**
      * 处理一个stream资源
      *
      * Stream constructor.
@@ -102,9 +85,12 @@ class Stream implements StreamInterface
         $this->isWritable = isset(static::$readWriteHash['write'][$meta['mode']]);
     }
 
+    /**
+     * 在销毁对象时关闭流
+     */
     public function __destruct()
     {
-        // Todo 在结束时关闭流
+        $this->close();
     }
 
     /**
@@ -134,10 +120,11 @@ class Stream implements StreamInterface
      */
     public function close()
     {
-        $stream = $this->detach();
-
-        if (is_resource($stream)) {
-            fclose($stream);
+        if (isset($this->stream)) {
+            if (is_resource($this->stream)) {
+                fclose($this->stream);
+            }
+            $this->detach();
         }
     }
 
@@ -198,7 +185,7 @@ class Stream implements StreamInterface
      */
     public function eof()
     {
-        //如果不是资源就返回true
+        // 如果不是资源就返回true
         return !$this->isAttached() || feof($this->stream);
     }
 
@@ -367,6 +354,6 @@ class Stream implements StreamInterface
      */
     public function isAttached()
     {
-        return is_resource($this->stream);
+        return isset($this->stream) && is_resource($this->stream);
     }
 }
