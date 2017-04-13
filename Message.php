@@ -36,13 +36,6 @@ abstract class Message implements MessageInterface
     protected $body = null;
 
     /**
-     * 属性
-     *
-     * @var array
-     */
-    protected $attributes = [];
-
-    /**
      * 输出字符串
      *
      * @return string
@@ -58,7 +51,7 @@ abstract class Message implements MessageInterface
     public static function parseMessage($message)
     {
         if (!$message || !is_string($message)) {
-            throw new \InvalidArgumentException('Invalid message');
+            throw new InvalidArgumentException('Invalid message');
         }
 
         list($headerBuffer, $body) = explode("\r\n\r\n", $message, 2);
@@ -69,16 +62,8 @@ abstract class Message implements MessageInterface
         $headers = [];
         foreach ($headerLines as $line) {
             if (strpos($line, ':')) {
-                $parts = explode(':', $line, 2);
-                $key = strtolower($parts[0]);
-                // 通过逗号分割的不区分大小写的字符串形式的所有值
-                $value = array_map("trim", explode(',', $parts[1]));
-
-                if (isset($headers[$key])) {
-                    $headers[$key] = array_merge($headers[$key], $value);
-                } else {
-                    $headers[$key] = $value;
-                }
+                list($name, $value) = array_map("trim", explode(':', $line, 2));
+                $headers[$name][] = $value;
             }
         }
 
@@ -232,7 +217,7 @@ abstract class Message implements MessageInterface
 
         $self = $this;
         foreach ($iterator as $name => $value) {
-            $self = $self->withAddedHeader($name,$value);
+            $self = $self->withAddedHeader($name, $value);
         }
 
         return $self;
@@ -246,7 +231,7 @@ abstract class Message implements MessageInterface
     public function getBody()
     {
         if (!$this->body) {
-            // Todo Lazy Init Body
+            $this->body = Body::createFrom("");
         }
 
         return $this->body;
@@ -265,59 +250,6 @@ abstract class Message implements MessageInterface
         }
 
         return $this->changeAttribute('body', $body);
-    }
-
-    /**
-     * 获取所有属性
-     *
-     * @return mixed[]
-     */
-    public function getAttributes()
-    {
-        return $this->attributes;
-    }
-
-    /**
-     * 获取一个属性的值
-     *
-     * @param string $name
-     * @param mixed $default
-     * @return mixed
-     */
-    public function getAttribute($name, $default = null)
-    {
-        return array_key_exists($name, $this->attributes)
-            ? $this->attributes[$name]
-            : $default;
-    }
-
-    /**
-     * 设置一个属性.
-     *
-     * @param string $name
-     * @param mixed $value
-     * @return self
-     */
-    public function withAttribute($name, $value)
-    {
-        return $this->changeAttribute(['attributes',$name], $value);
-    }
-
-    /**
-     * 删除一个属性
-     *
-     * @see getAttributes()
-     * @param string $name .
-     * @return self
-     */
-    public function withoutAttribute($name)
-    {
-        $self = clone $this;
-        if (array_key_exists($name, $self->attributes)) {
-            unset($self->attributes[$name]);
-        }
-
-        return $self;
     }
 
     /**
@@ -354,11 +286,36 @@ abstract class Message implements MessageInterface
                 $headerValue = implode(',', $headerValue);
             }
 
-            $headerName = implode('-',array_map('ucfirst',explode('-',$headerName)));
-            $result[] = sprintf('%s: %s',$headerName,$headerValue);
+            $headerName = implode('-',array_map('ucfirst',explode('-', $headerName)));
+            $result[] = sprintf('%s: %s', $headerName, $headerValue);
         }
 
-        return $result ? implode(PHP_EOL,$result).PHP_EOL : '';
+        return $result ? implode(PHP_EOL, $result).PHP_EOL : '';
+    }
+
+    /**
+     * 设置Headers
+     *
+     * @param array $headers
+     */
+    protected function setHeaders(array $headers)
+    {
+        $this->headers = [];
+        foreach ($headers as $name => $value) {
+            if (!is_array($value)) {
+                // 通过逗号分割的不区分大小写的字符串形式的所有值
+                $value = explode(',', $value);
+            }
+
+            $name = strtolower($name);
+            $value = array_map("trim", $value);
+
+            if (array_key_exists($name, $this->headers)) {
+                $this->headers[$name] = array_merge($this->headers[$name], $value);
+            } else {
+                $this->headers[$name] = $value;
+            }
+        }
     }
 
     /**

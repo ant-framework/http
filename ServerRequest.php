@@ -44,6 +44,13 @@ class ServerRequest extends Request implements ServerRequestInterface
     protected $serverParams = [];
 
     /**
+     * 属性
+     *
+     * @var array
+     */
+    protected $attributes = [];
+
+    /**
      * body 解析器 根据subtype进行调用
      *
      * @var array
@@ -58,36 +65,129 @@ class ServerRequest extends Request implements ServerRequestInterface
     protected $usesBody = false;
 
     /**
-     * 通过Tcp输入流解析Http请求
+     * 在“$_SERVER”中不是以“HTTP_”开头的Http头
      *
-     * @param string $receiveBuffer
-     * @return static
+     * @var array
      */
-    final public static function createFromRequestStr($receiveBuffer)
+    protected static $special = [
+        'CONTENT_TYPE' => 1,
+        'CONTENT_LENGTH' => 1,
+        'PHP_AUTH_USER' => 1,
+        'PHP_AUTH_PW' => 1,
+        'PHP_AUTH_DIGEST' => 1,
+        'AUTH_TYPE' => 1,
+    ];
+
+    /**
+     * @param array $serverParams
+     * @param array $cookieParams
+     * @param array $queryParams
+     * @param array $bodyParams
+     * @param array $uploadFiles
+     * @param null $body
+     * @return ServerRequest
+     */
+    public static function createFromCgi(
+        array $serverParams = [],
+        array $cookieParams = [],
+        array $queryParams = [],
+        array $bodyParams = [],
+        array $uploadFiles = [],
+        StreamInterface $body = null
+    ) {
+        $serverParams = $serverParams ?: $_SERVER;
+        $cookieParams = $cookieParams ?: $_COOKIE;
+        $queryParams = $queryParams ?: $_GET;
+        $bodyParams = $bodyParams ?: $_POST;
+        $uploadFiles = UploadedFile::parseUploadedFiles($uploadFiles ?: $_FILES);
+
+        $method = isset($serverParams['REQUEST_METHOD']) ? $serverParams['REQUEST_METHOD'] : 'GET';
+
+        $headers = function_exists('getallheaders')
+            ? getallheaders()
+            : static::parserServerHeader($serverParams);
+
+        $uri = Uri::createFromServerParams($serverParams);
+
+        $body = $body ?: RequestBody::createFromCgi();
+
+        $protocol = isset($serverParams['SERVER_PROTOCOL'])
+            ? str_replace('HTTP/', '', $serverParams['SERVER_PROTOCOL'])
+            : '1.1';
+
+        $serverRequest = new ServerRequest($method, $uri, $headers, $body, $protocol, $serverParams);
+
+        return $serverRequest
+            ->withCookieParams($cookieParams)
+            ->withQueryParams($queryParams)
+            ->withParsedBody($bodyParams)
+            ->withUploadedFiles($uploadFiles);
+    }
+
+    /**
+     * 从Server参数中提取Http Header
+     *
+     * @param $serverParams
+     * @return array
+     */
+    protected static function parserServerHeader($serverParams)
     {
-        if (!is_string($receiveBuffer)) {
-            throw new \InvalidArgumentException('Request must be string');
+        $headers = [];
+        foreach ($serverParams as $key => $value) {
+            //提取HTTP头
+            if (isset(static::$special[$key]) || strpos($key, 'HTTP_') === 0) {
+                $key = strtolower(str_replace('_', '-', $key));
+                $key = (strpos($key, 'http-') === 0) ? substr($key, 5) : $key;
+                $headers[$key] = explode(',', $value);
+            }
         }
 
-        list($startLine, $headers, $bodyBuffer) = static::parseMessage($receiveBuffer);
+        return $headers;
+    }
 
+    /**
+     * 通过Tcp输入流解析Http请求
+     *
+     * @param $receiveBuffer
+     * @param array $serverParams
+     * @return ServerRequest
+     */
+    final public static function createFromString($receiveBuffer, array $serverParams = [])
+    {
+        list($startLine, $headers, $body) = static::parseMessage($receiveBuffer);
         // 解析起始行
         list($method, $requestTarget, $protocol) = explode(' ', $startLine, 3);
+        // 获取Http协议版本
         $protocolVersion = str_replace('HTTP/', '', $protocol);
-
         // 获取Uri
-        $uri = (isset($headers['host']) ? 'http://'.$headers['host'][0] : '') . $requestTarget;
+        $uri = static::createUri($requestTarget, $headers);
 
-        // 将Body写入流
-        $body = ($method == 'GET')
-            ? new RequestBody(fopen('php://temp','r+'))
-            : RequestBody::createFrom($bodyBuffer);
-
-        $request = new ServerRequest($method, $uri, $headers, $body, $protocolVersion);
+        $request = new ServerRequest($method, $uri, $headers, $body, $protocolVersion, $serverParams);
         // 注册Body基础解析器
         $request->registerBaseBodyParsers();
 
         return $request;
+    }
+
+    /**
+     * @param $path
+     * @param array $headers
+     * @return string
+     */
+    protected static function createUri($path, array $headers = [])
+    {
+        $hostKey = array_filter(array_keys($headers), function ($k) {
+            return strtolower($k) === 'host';
+        });
+
+        if (!$hostKey) {
+            return $path;
+        }
+
+        $host = $headers[reset($hostKey)][0];
+        $scheme = substr($host, -4) === ':443' ? 'https' : 'http';
+
+        return $scheme . '://' . $host . '/' . ltrim($path, '/');
     }
 
     /**
@@ -150,7 +250,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      * 设置cookie参数
      *
      * @param array $cookies
-     * @return Request
+     * @return ServerRequest
      */
     public function withCookieParams(array $cookies)
     {
@@ -171,7 +271,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      * 设置查询参数
      *
      * @param array $query
-     * @return Request
+     * @return ServerRequest
      */
     public function withQueryParams(array $query)
     {
@@ -186,7 +286,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      * 向get中添加参数
      *
      * @param array $query
-     * @return Request
+     * @return ServerRequest
      */
     public function withAddedQueryParams(array $query)
     {
@@ -197,7 +297,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      * 添加body数据
      *
      * @param StreamInterface $body
-     * @return $this|Message
+     * @return ServerRequest
      */
     public function withBody(StreamInterface $body)
     {
@@ -221,7 +321,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      * 添加上传文件信息
      *
      * @param array $uploadedFiles
-     * @return Request
+     * @return ServerRequest
      */
     public function withUploadedFiles(array $uploadedFiles)
     {
@@ -272,15 +372,17 @@ class ServerRequest extends Request implements ServerRequestInterface
      */
     public function getBodyParam($key = null)
     {
-        if (is_null($key)) {
-            return $this->getParsedBody();
-        }
-
         $params = $this->getParsedBody();
+
+        if (is_null($key)) {
+            return $params;
+        }
 
         if (is_array($params) && array_key_exists($key,$params)) {
             return $params[$key];
-        } elseif (is_object($params) && property_exists($params, $key)) {
+        }
+
+        if (is_object($params) && property_exists($params, $key)) {
             return $params->$key;
         }
 
@@ -291,7 +393,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      * 设置body解析结果
      *
      * @param array|null|object $data
-     * @return Request
+     * @return ServerRequest
      */
     public function withParsedBody($data)
     {
@@ -300,6 +402,59 @@ class ServerRequest extends Request implements ServerRequestInterface
         }
 
         return $this->changeAttribute('bodyParams', $data);
+    }
+
+    /**
+     * 获取所有属性
+     *
+     * @return mixed[]
+     */
+    public function getAttributes()
+    {
+        return $this->attributes;
+    }
+
+    /**
+     * 获取一个属性的值
+     *
+     * @param string $name
+     * @param mixed $default
+     * @return mixed
+     */
+    public function getAttribute($name, $default = null)
+    {
+        return array_key_exists($name, $this->attributes)
+            ? $this->attributes[$name]
+            : $default;
+    }
+
+    /**
+     * 设置一个属性.
+     *
+     * @param string $name
+     * @param mixed $value
+     * @return ServerRequest
+     */
+    public function withAttribute($name, $value)
+    {
+        return $this->changeAttribute(['attributes',$name], $value);
+    }
+
+    /**
+     * 删除一个属性
+     *
+     * @see getAttributes()
+     * @param string $name .
+     * @return ServerRequest
+     */
+    public function withoutAttribute($name)
+    {
+        $self = clone $this;
+        if (array_key_exists($name, $self->attributes)) {
+            unset($self->attributes[$name]);
+        }
+
+        return $self;
     }
 
     /**
@@ -354,6 +509,67 @@ class ServerRequest extends Request implements ServerRequestInterface
      */
     public function registerBaseBodyParsers()
     {
-        $this->bodyParsers = BodyParsers::create($this);
+        $this->bodyParsers = BodyParsers::create();
+    }
+
+    protected function parseFromData()
+    {
+        // Todo Parse Body
+        if (!preg_match('/boundary="?(\S+)"?/', $this->getHeaderLine('content-type'), $match)) {
+            return null;
+        }
+
+        $data = [];
+        $bodyBoundary = '--' . $match[1] . "\r\n";
+        // 将最后一行分界符剔除
+        $body = substr(
+            $this->getBody()->__toString(), 0,
+            $this->getBody()->getSize() - (strlen($bodyBoundary) + 4)
+        );
+
+        foreach (explode($bodyBoundary, $body) as $buffer) {
+            if ($buffer === '') {
+                continue;
+            }
+
+            // 将Body头信息跟内容拆分
+            list($header, $bufferBody) = explode("\r\n\r\n", $buffer, 2);
+            $bufferBody = substr($bufferBody, 0, -2);
+            $headerData = $this->getDisposition($header);
+
+            if (!$headerData) {
+                continue;
+            }
+
+            if (preg_match('/name="(.*?)"$/', $headerData, $match)) {
+                $data[$match[1]] = $bufferBody;
+
+            } elseif (preg_match('/name="(.*?)"; filename="(.*?)"$/', $headerData, $match)) {
+                $file = new Stream(fopen('php://temp','w'));
+                $file->write($bufferBody);
+                $file->rewind();
+
+                $this->uploadFiles[$match[1]] = new UploadedFile([
+                    'stream'    => $file,
+                    'name'      => $match[1],
+                    'size'      => $file->getSize()
+                ]);
+            }
+        }
+
+        return $data;
+    }
+
+    protected function getDisposition($header)
+    {
+        foreach (explode("\r\n", $header) as $item) {
+            list($headerName, $headerData) = explode(":", $item, 2);
+            $headerName = trim(strtolower($headerName));
+            if ($headerName == 'content-disposition') {
+                return $headerData;
+            }
+        }
+
+        return false;
     }
 }

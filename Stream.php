@@ -65,6 +65,45 @@ class Stream implements StreamInterface
     ];
 
     /**
+     * 通过字符串创建一个流
+     *
+     * @param string $resource
+     * @return static
+     */
+    public static function createFrom($resource)
+    {
+        if (is_object($resource) && $resource instanceof StreamInterface) {
+            return $resource;
+        }
+
+        if (is_scalar($resource) || is_null($resource)) {
+            $stream = fopen('php://temp', 'r+');
+
+            if ($resource !== '') {
+                fwrite($stream, $resource);
+                fseek($stream, 0);
+            }
+
+            return new static($stream);
+        }
+
+        throw new RuntimeException("Error");
+    }
+
+    /**
+     * 获取请求内容
+     */
+    public static function createFromCgi()
+    {
+        // 必须用stream_copy_to_stream将input流拷贝到另一个流上,不然无法使用fstat函数
+        $stream = fopen('php://temp', 'w+');
+        stream_copy_to_stream(fopen('php://input', 'r'), $stream);
+        fseek($stream, 0);
+
+        return new static($stream);
+    }
+
+    /**
      * 处理一个stream资源
      *
      * Stream constructor.

@@ -21,11 +21,11 @@ class Uri implements UriInterface
     ];
 
     /**
-     * 连接方式
+     * 协议
      *
      * @var string
      */
-    protected $scheme;
+    protected $scheme = "http";
 
     /**
      * 请求主机地址
@@ -79,34 +79,34 @@ class Uri implements UriInterface
     /**
      * @return static
      */
-    public static function createFromEnvironment($env)
+    public static function createFromServerParams($serverParams)
     {
-        $scheme = (isset($env['HTTPS']) && $env['HTTPS'] == 'on') ? 'https' : 'http';
+        $scheme = (isset($serverParams['HTTPS']) && $serverParams['HTTPS'] == 'on') ? 'https' : 'http';
 
-        $username = isset($env['PHP_AUTH_USER']) ? $env['PHP_AUTH_USER'] : '';
-        $password = isset($env['PHP_AUTH_PW']) ? $env['PHP_AUTH_PW'] : '';
+        $username = isset($serverParams['PHP_AUTH_USER']) ? $serverParams['PHP_AUTH_USER'] : '';
+        $password = isset($serverParams['PHP_AUTH_PW']) ? $serverParams['PHP_AUTH_PW'] : '';
         $userInfo = $username . ($password ? ':' . $password : '');
 
         //获取主机地址
-        if (isset($env['HTTP_HOST'])) {
-            if (strpos($env['HTTP_HOST'],':')) {
-                list($host,$port) = explode(':',$env['HTTP_HOST'],2);
+        if (isset($serverParams['HTTP_HOST'])) {
+            if (strpos($serverParams['HTTP_HOST'],':')) {
+                list($host,$port) = explode(':',$serverParams['HTTP_HOST'],2);
                 $port = (int)$port;
             } else {
-                $host = $env['HTTP_HOST'];
+                $host = $serverParams['HTTP_HOST'];
                 $port = null;
             }
         } else {
-            $host = isset($env['SERVER_NAME'])
-                ? $env['SERVER_NAME']
-                : (isset($env['SERVER_ADDR']) ? $env['SERVER_ADDR'] : null);
+            $host = isset($serverParams['SERVER_NAME'])
+                ? $serverParams['SERVER_NAME']
+                : (isset($serverParams['SERVER_ADDR']) ? $serverParams['SERVER_ADDR'] : null);
 
-            $port = isset($env['SERVER_PORT']) ? $env['SERVER_PORT'] : null;
+            $port = isset($serverParams['SERVER_PORT']) ? $serverParams['SERVER_PORT'] : null;
         }
 
         $uri = $scheme.':';
         $uri .= '//'.($userInfo ? $userInfo."@" : ''). $host .($port !== null ? ':' . $port : '');
-        $uri .= isset($env['REQUEST_URI']) ? $env['REQUEST_URI'] : '';
+        $uri .= isset($serverParams['REQUEST_URI']) ? $serverParams['REQUEST_URI'] : '';
 
         return new static($uri);
     }
@@ -117,9 +117,11 @@ class Uri implements UriInterface
      * Uri constructor.
      * @param $uri
      */
-    public function __construct($uri = '')
+    public function __construct($uri = '', array $options = [])
     {
-        foreach ((array) parse_url($uri) as $key => $value) {
+        $options = array_merge((array) parse_url($uri), $options);
+
+        foreach ($options as $key => $value) {
             $this->$key = $value;
         }
     }

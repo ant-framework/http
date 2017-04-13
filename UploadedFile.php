@@ -7,6 +7,8 @@ use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UploadedFileInterface;
 
 /**
+ * Todo 简化
+ *
  * Class UploadedFile
  * @package Ant\Http
  */
@@ -116,7 +118,7 @@ class UploadedFile implements UploadedFileInterface
         $targetIsStream = strpos($targetPath, '://') > 0;
 
         // 如果目标是文件,而且不可写入时
-        if (!$targetIsStream && !is_writable(dirname($targetPath))){
+        if (!$targetIsStream && !is_writable(dirname($targetPath))) {
             throw new InvalidArgumentException('Upload target path is not writable');
         }
 

@@ -1,22 +1,20 @@
 <?php
 namespace Ant\Http;
 
-use Psr\Http\Message\RequestInterface;
-
 class BodyParsers
 {
-    public static function create(RequestInterface $request)
+    public static function create()
     {
         return [
-            // 解析Xml数据,
+            // 瑙ｆ瀽Xml鏁版嵁,
             'text/xml'                          =>  [BodyParsers::class, "parseXml"],
             'application/xml'                   =>  [BodyParsers::class, "parseXml"],
-            // 解析Json数据
+            // 瑙ｆ瀽Json鏁版嵁
             'text/json'                         =>  [BodyParsers::class, "parseJson"],
             'application/json'                  =>  [BodyParsers::class, "parseJson"],
-            // 解析表单数据
+            // 瑙ｆ瀽琛ㄥ崟鏁版嵁
             'multipart/form-data'               =>  [BodyParsers::class, "parseFormData"],
-            // 解析Url encode格式
+            // 瑙ｆ瀽Url encode鏍煎紡
             'application/x-www-form-urlencoded' =>  [BodyParsers::class, "parseUrlEncode"],
         ];
     }
@@ -62,7 +60,7 @@ class BodyParsers
      * @param string $input
      * @return array|null
      */
-    public static function parseFormData($input, Request $req)
+    public static function parseFormData($input, ServerRequest $req)
     {
         if (!preg_match('/boundary="?(\S+)"?/', $req->getHeaderLine('content-type'), $match)) {
             return null;
@@ -71,41 +69,55 @@ class BodyParsers
         $data = [];
         $uploadFiles = [];
         $bodyBoundary = '--' . $match[1] . "\r\n";
-        // 将最后一行分界符剔除
+        // 灏嗘渶鍚庝竴琛屽垎鐣岀鍓旈櫎
         $body = substr(
             $input, 0,
             $req->getBody()->getSize() - (strlen($bodyBoundary) + 4)
         );
 
         foreach (explode($bodyBoundary, $body) as $buffer) {
-            if ($buffer == '') {
+            if ($buffer === '') {
                 continue;
             }
-            // 将Body头信息跟内容拆分
+
+            // 灏咮ody澶翠俊鎭窡鍐呭鎷嗗垎
             list($header, $bufferBody) = explode("\r\n\r\n", $buffer, 2);
             $bufferBody = substr($bufferBody, 0, -2);
-            foreach (explode("\r\n", $header) as $item) {
-                list($headerName, $headerData) = explode(":", $item, 2);
-                $headerName = trim(strtolower($headerName));
-                // 将参数名与值进行配对
-                if ($headerName == 'content-disposition') {
-                    if (preg_match('/name="(.*?)"$/', $headerData, $match)) {
-                        $data[$match[1]] = $bufferBody;
-                    } elseif (preg_match('/name="(.*?)"; filename="(.*?)"$/', $headerData, $match)) {
-                        $file = new Stream(fopen('php://temp','w'));
-                        $file->write($bufferBody);
-                        $file->rewind();
+            $headerData = static::getDisposition($header);
 
-                        $uploadFiles[$match[1]] = new UploadedFile([
-                            'stream'    => $file,
-                            'name'      => $match[1],
-                            'size'      => $file->getSize()
-                        ]);
-                    }
-                }
+            if (!$headerData) {
+                continue;
+            }
+
+            if (preg_match('/name="(.*?)"$/', $headerData, $match)) {
+                $data[$match[1]] = $bufferBody;
+
+            } elseif (preg_match('/name="(.*?)"; filename="(.*?)"$/', $headerData, $match)) {
+                $file = new Stream(fopen('php://temp','w'));
+                $file->write($bufferBody);
+                $file->rewind();
+
+                $uploadFiles[$match[1]] = new UploadedFile([
+                    'stream'    => $file,
+                    'name'      => $match[1],
+                    'size'      => $file->getSize()
+                ]);
             }
         }
 
         return $data;
+    }
+
+    protected static function getDisposition($header)
+    {
+        foreach (explode("\r\n", $header) as $item) {
+            list($headerName, $headerData) = explode(":", $item, 2);
+            $headerName = trim(strtolower($headerName));
+            if ($headerName == 'content-disposition') {
+                return $headerData;
+            }
+        }
+
+        return false;
     }
 }

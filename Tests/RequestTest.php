@@ -4,6 +4,7 @@ namespace Test;
 use Ant\Http\Uri;
 use Ant\Http\ServerRequest;
 
+// Todo 提高单元测试覆盖率
 class RequestTest extends \PHPUnit_Framework_TestCase
 {
     /**
@@ -18,14 +19,14 @@ Accept: application/json
 Cookie: foo=bar;test_key=test_value\r\n\r\n
 EOT;
 
-        return ServerRequest::createFromRequestStr($requestString);
+        return ServerRequest::createFromString($requestString);
     }
 
     public function testCreateRequestFromString()
     {
         $requestString = "GET / HTTP/1.1\r\nHost: www.example.com\r\n\r\n";
 
-        $request = ServerRequest::createFromRequestStr($requestString);
+        $request = ServerRequest::createFromString($requestString);
         $this->assertEquals($requestString, $request->__toString());
         $this->assertInstanceOf(ServerRequest::class, $request);
     }
@@ -55,7 +56,7 @@ Host: www.example.com\r\n\r\n
 EOT;
 
         //================= 在Http头部重写请求方法后，是否会替换原来的请求方法 =================//
-        $request = ServerRequest::createFromRequestStr($requestString);
+        $request = ServerRequest::createFromString($requestString);
         $this->assertEquals("PATCH", $request->getMethod());
         $this->assertEquals("PATCH", $request->getHeaderLine('X-Http-Method-Override'));
         $this->assertEquals("GET", $request->getOriginalMethod());
@@ -76,7 +77,7 @@ Host: www.example.com\r\n
 EOT;
 
         //================= 当请求为POST的时候尝试用post参数重写请求方法 =================//
-        $request = ServerRequest::createFromRequestStr($requestString);
+        $request = ServerRequest::createFromString($requestString);
         $this->assertEquals("DELETE", $request->getMethod());
         $this->assertEquals("POST", $request->getOriginalMethod());
         $this->assertEquals("DELETE", $request->getBodyParam('_method'));
@@ -163,7 +164,7 @@ Content-Type: application/json
 Host: www.example.com\r\n
 {"foo":"bar","fii":"bae"}
 EOT;
-        $request = ServerRequest::createFromRequestStr($requestString);
+        $request = ServerRequest::createFromString($requestString);
 
         $this->assertEquals('bar', $request->getBodyParam('foo'));
         $this->assertEquals('bae', $request->getBodyParam('fii'));
@@ -182,7 +183,7 @@ Host: www.example.com\r\n
 <?xml version="1.0"?>
 <xml><foo>bar</foo><fii>bae</fii></xml>
 EOT;
-        $request = ServerRequest::createFromRequestStr($requestString);
+        $request = ServerRequest::createFromString($requestString);
 
         $this->assertEquals('bar', $request->getBodyParam('foo'));
         $this->assertEquals('bae', $request->getBodyParam('fii'));
@@ -200,7 +201,7 @@ Content-Type: application/x-www-form-urlencoded
 Host: www.example.com\r\n
 foo=bar&fii=bae
 EOT;
-        $request = ServerRequest::createFromRequestStr($requestString);
+        $request = ServerRequest::createFromString($requestString);
 
         $this->assertEquals('bar', $request->getBodyParam('foo'));
         $this->assertEquals('bae', $request->getBodyParam('fii'));
@@ -226,7 +227,7 @@ Content-Disposition: form-data; name="fii"
 bae
 ------WebKitFormBoundaryF7ujiYJ1r6fEQ1Qu--\r\n\r\n
 EOT;
-        $request = ServerRequest::createFromRequestStr($requestString);
+        $request = ServerRequest::createFromString($requestString);
 
         $this->assertEquals('bar', $request->getBodyParam('foo'));
         $this->assertEquals('bae', $request->getBodyParam('fii'));

@@ -1,10 +1,8 @@
 <?php
 namespace Ant\Http;
 
-use RuntimeException;
 use InvalidArgumentException;
 use Psr\Http\Message\UriInterface;
-use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\RequestInterface;
 
 /**
@@ -52,13 +50,17 @@ class Request extends Message implements RequestInterface
 
         $this->method = $method;
         $this->uri = $uri;
-        $this->headers = $headers;
-        $this->body = $body ?: new Body();
+        $this->setHeaders($headers);
         $this->protocolVersion = $protocolVersion;
 
         // 如果没设置Host,尝试通过Uri获取
         if (!$this->hasHeader("host")) {
             $this->updateHostFromUri();
+        }
+
+        if ($body !== "" && $body !== null) {
+            // Todo Lazy Stream
+            $this->body = Body::createFrom($body);
         }
     }
 
@@ -98,12 +100,12 @@ class Request extends Message implements RequestInterface
     {
         $method = $this->method;
 
-        //检查是否在报头中重载了http动词
+        // 检查是否在报头中重载了http动词
         if ($customMethod = $this->getHeaderLine('x-http-method-override')) {
             $method = $customMethod;
         }
 
-        //当请求方式为Post时,检查是否为表单提交,跟请求重写
+        // 当请求方式为Post时,检查是否为表单提交,跟请求重写
         if ($this->method == 'POST' && $customMethod = $this->getBodyParam('_method')) {
             $method = $customMethod;
         }
