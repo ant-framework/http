@@ -314,6 +314,10 @@ class ServerRequest extends Request implements ServerRequestInterface
      */
     public function getUploadedFiles()
     {
+        if (!$this->usesBody) {
+            $this->parseFromData($this->getBody()->__toString());
+        }
+
         return $this->uploadFiles;
     }
 
@@ -346,9 +350,9 @@ class ServerRequest extends Request implements ServerRequestInterface
             // 用自定义方法解析Body内容
             if ($this->body->getSize() !== 0 && isset($this->bodyParsers[$contentType])) {
                 // 调用body解析函数
-                $parsed = call_user_func_array(
+                $parsed = call_user_func(
                     $this->bodyParsers[$contentType],
-                    [$this->getBody()->__toString(), $this]
+                    $this->getBody()->__toString()
                 );
 
                 if (!(is_null($parsed) || is_object($parsed) || is_array($parsed))) {
@@ -509,12 +513,26 @@ class ServerRequest extends Request implements ServerRequestInterface
      */
     public function registerBaseBodyParsers()
     {
-        $this->bodyParsers = BodyParsers::create();
+        $this->bodyParsers = [
+            // 解析Xml数据,
+            'text/xml'                          =>  [BodyParsers::class, "parseXml"],
+            'application/xml'                   =>  [BodyParsers::class, "parseXml"],
+            // 解析Json数据
+            'text/json'                         =>  [BodyParsers::class, "parseJson"],
+            'application/json'                  =>  [BodyParsers::class, "parseJson"],
+            // 解析表单数据
+            'multipart/form-data'               =>  [$this, "parseFromData"],
+            // 解析Url encode格式
+            'application/x-www-form-urlencoded' =>  [BodyParsers::class, "parseUrlEncode"],
+        ];
     }
 
-    protected function parseFromData()
+    /**
+     * @param $input
+     * @return array|null
+     */
+    protected function parseFromData($input)
     {
-        // Todo Parse Body
         if (!preg_match('/boundary="?(\S+)"?/', $this->getHeaderLine('content-type'), $match)) {
             return null;
         }
@@ -523,28 +541,25 @@ class ServerRequest extends Request implements ServerRequestInterface
         $bodyBoundary = '--' . $match[1] . "\r\n";
         // 将最后一行分界符剔除
         $body = substr(
-            $this->getBody()->__toString(), 0,
+            $input, 0,
             $this->getBody()->getSize() - (strlen($bodyBoundary) + 4)
         );
 
         foreach (explode($bodyBoundary, $body) as $buffer) {
-            if ($buffer === '') {
+            if ($buffer == '') {
                 continue;
             }
 
             // 将Body头信息跟内容拆分
             list($header, $bufferBody) = explode("\r\n\r\n", $buffer, 2);
             $bufferBody = substr($bufferBody, 0, -2);
-            $headerData = $this->getDisposition($header);
+            $disposition = $this->getContentDisposition($header);
 
-            if (!$headerData) {
+            if (!$disposition) {
                 continue;
             }
 
-            if (preg_match('/name="(.*?)"$/', $headerData, $match)) {
-                $data[$match[1]] = $bufferBody;
-
-            } elseif (preg_match('/name="(.*?)"; filename="(.*?)"$/', $headerData, $match)) {
+            if (preg_match('/name="(.*?)"; filename="(.*?)"$/', $disposition, $match)) {
                 $file = new Stream(fopen('php://temp','w'));
                 $file->write($bufferBody);
                 $file->rewind();
@@ -554,13 +569,19 @@ class ServerRequest extends Request implements ServerRequestInterface
                     'name'      => $match[1],
                     'size'      => $file->getSize()
                 ]);
+            } elseif (preg_match('/name="(.*?)"$/', $disposition, $match)) {
+                $data[$match[1]] = $bufferBody;
             }
         }
 
         return $data;
     }
 
-    protected function getDisposition($header)
+    /**
+     * @param $header
+     * @return bool
+     */
+    protected function getContentDisposition($header)
     {
         foreach (explode("\r\n", $header) as $item) {
             list($headerName, $headerData) = explode(":", $item, 2);

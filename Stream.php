@@ -10,6 +10,7 @@ use Psr\Http\Message\StreamInterface;
  * Class Stream
  * @package Ant\Http
  * Todo IteratorStream
+ * Todo 更新
  *
  * @note
  * stream "php://output"  mode can only be "wb"
