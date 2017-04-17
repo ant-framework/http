@@ -55,7 +55,18 @@ class ServerRequest extends Request implements ServerRequestInterface
      *
      * @var array
      */
-    protected $bodyParsers = [];
+    protected $bodyParsers = [
+        // 解析Xml数据,
+        'text/xml'                          =>  [ServerRequest::class, "parseXml"],
+        'application/xml'                   =>  [ServerRequest::class, "parseXml"],
+        // 解析Json数据
+        'text/json'                         =>  [ServerRequest::class, "parseJson"],
+        'application/json'                  =>  [ServerRequest::class, "parseJson"],
+        // 解析表单数据
+        'multipart/form-data'               =>  [ServerRequest::class, "parseFromData"],
+        // 解析Url encode格式
+        'application/x-www-form-urlencoded' =>  [ServerRequest::class, "parseUrlEncode"],
+    ];
 
     /**
      * body是否使用过
@@ -79,73 +90,6 @@ class ServerRequest extends Request implements ServerRequestInterface
     ];
 
     /**
-     * @param array $serverParams
-     * @param array $cookieParams
-     * @param array $queryParams
-     * @param array $bodyParams
-     * @param array $uploadFiles
-     * @param null $body
-     * @return ServerRequest
-     */
-    public static function createFromCgi(
-        array $serverParams = [],
-        array $cookieParams = [],
-        array $queryParams = [],
-        array $bodyParams = [],
-        array $uploadFiles = [],
-        StreamInterface $body = null
-    ) {
-        $serverParams = $serverParams ?: $_SERVER;
-        $cookieParams = $cookieParams ?: $_COOKIE;
-        $queryParams = $queryParams ?: $_GET;
-        $bodyParams = $bodyParams ?: $_POST;
-        $uploadFiles = UploadedFile::parseUploadedFiles($uploadFiles ?: $_FILES);
-
-        $method = isset($serverParams['REQUEST_METHOD']) ? $serverParams['REQUEST_METHOD'] : 'GET';
-
-        $headers = function_exists('getallheaders')
-            ? getallheaders()
-            : static::parserServerHeader($serverParams);
-
-        $uri = Uri::createFromServerParams($serverParams);
-
-        $body = $body ?: RequestBody::createFromCgi();
-
-        $protocol = isset($serverParams['SERVER_PROTOCOL'])
-            ? str_replace('HTTP/', '', $serverParams['SERVER_PROTOCOL'])
-            : '1.1';
-
-        $serverRequest = new ServerRequest($method, $uri, $headers, $body, $protocol, $serverParams);
-
-        return $serverRequest
-            ->withCookieParams($cookieParams)
-            ->withQueryParams($queryParams)
-            ->withParsedBody($bodyParams)
-            ->withUploadedFiles($uploadFiles);
-    }
-
-    /**
-     * 从Server参数中提取Http Header
-     *
-     * @param $serverParams
-     * @return array
-     */
-    protected static function parserServerHeader($serverParams)
-    {
-        $headers = [];
-        foreach ($serverParams as $key => $value) {
-            //提取HTTP头
-            if (isset(static::$special[$key]) || strpos($key, 'HTTP_') === 0) {
-                $key = strtolower(str_replace('_', '-', $key));
-                $key = (strpos($key, 'http-') === 0) ? substr($key, 5) : $key;
-                $headers[$key] = explode(',', $value);
-            }
-        }
-
-        return $headers;
-    }
-
-    /**
      * 通过Tcp输入流解析Http请求
      *
      * @param $receiveBuffer
@@ -163,8 +107,6 @@ class ServerRequest extends Request implements ServerRequestInterface
         $uri = static::createUri($requestTarget, $headers);
 
         $request = new ServerRequest($method, $uri, $headers, $body, $protocolVersion, $serverParams);
-        // 注册Body基础解析器
-        $request->registerBaseBodyParsers();
 
         return $request;
     }
@@ -315,7 +257,7 @@ class ServerRequest extends Request implements ServerRequestInterface
     public function getUploadedFiles()
     {
         if (!$this->usesBody) {
-            $this->parseFromData($this->getBody()->__toString());
+            static::parseFromData($this->getBody()->__toString(), $this);
         }
 
         return $this->uploadFiles;
@@ -350,9 +292,9 @@ class ServerRequest extends Request implements ServerRequestInterface
             // 用自定义方法解析Body内容
             if ($this->body->getSize() !== 0 && isset($this->bodyParsers[$contentType])) {
                 // 调用body解析函数
-                $parsed = call_user_func(
+                $parsed = call_user_func_array(
                     $this->bodyParsers[$contentType],
-                    $this->getBody()->__toString()
+                    [$this->getBody()->__toString(), $this]
                 );
 
                 if (!(is_null($parsed) || is_object($parsed) || is_array($parsed))) {
@@ -509,31 +451,49 @@ class ServerRequest extends Request implements ServerRequestInterface
     }
 
     /**
-     * 注册默认body解析器
+     * @param string $input
+     * @return array|null
      */
-    public function registerBaseBodyParsers()
+    protected static function parseJson($input)
     {
-        $this->bodyParsers = [
-            // 解析Xml数据,
-            'text/xml'                          =>  [BodyParsers::class, "parseXml"],
-            'application/xml'                   =>  [BodyParsers::class, "parseXml"],
-            // 解析Json数据
-            'text/json'                         =>  [BodyParsers::class, "parseJson"],
-            'application/json'                  =>  [BodyParsers::class, "parseJson"],
-            // 解析表单数据
-            'multipart/form-data'               =>  [$this, "parseFromData"],
-            // 解析Url encode格式
-            'application/x-www-form-urlencoded' =>  [BodyParsers::class, "parseUrlEncode"],
-        ];
+        $data = json_decode($input, true);
+
+        if ($data === null && json_last_error() !== JSON_ERROR_NONE) {
+            return null;
+        }
+
+        return $data;
+    }
+
+    /**
+     * @param string $input
+     * @return \SimpleXMLElement
+     */
+    protected static function parseXml($input)
+    {
+        $backup = libxml_disable_entity_loader(true);
+        $data = simplexml_load_string($input);
+        libxml_disable_entity_loader($backup);
+        return $data;
+    }
+
+    /**
+     * @param string $input
+     * @return array|null
+     */
+    protected static function parseUrlEncode($input)
+    {
+        parse_str($input, $data);
+        return $data;
     }
 
     /**
      * @param $input
      * @return array|null
      */
-    protected function parseFromData($input)
+    protected static function parseFromData($input, ServerRequest $req)
     {
-        if (!preg_match('/boundary="?(\S+)"?/', $this->getHeaderLine('content-type'), $match)) {
+        if (!preg_match('/boundary="?(\S+)"?/', $req->getHeaderLine('content-type'), $match)) {
             return null;
         }
 
@@ -542,7 +502,7 @@ class ServerRequest extends Request implements ServerRequestInterface
         // 将最后一行分界符剔除
         $body = substr(
             $input, 0,
-            $this->getBody()->getSize() - (strlen($bodyBoundary) + 4)
+            $req->getBody()->getSize() - (strlen($bodyBoundary) + 4)
         );
 
         foreach (explode($bodyBoundary, $body) as $buffer) {
@@ -553,7 +513,7 @@ class ServerRequest extends Request implements ServerRequestInterface
             // 将Body头信息跟内容拆分
             list($header, $bufferBody) = explode("\r\n\r\n", $buffer, 2);
             $bufferBody = substr($bufferBody, 0, -2);
-            $disposition = $this->getContentDisposition($header);
+            $disposition = static::getContentDisposition($header);
 
             if (!$disposition) {
                 continue;
@@ -564,7 +524,7 @@ class ServerRequest extends Request implements ServerRequestInterface
                 $file->write($bufferBody);
                 $file->rewind();
 
-                $this->uploadFiles[$match[1]] = new UploadedFile([
+                $req->uploadFiles[$match[1]] = new UploadedFile([
                     'stream'    => $file,
                     'name'      => $match[1],
                     'size'      => $file->getSize()
@@ -581,7 +541,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      * @param $header
      * @return bool
      */
-    protected function getContentDisposition($header)
+    protected static function getContentDisposition($header)
     {
         foreach (explode("\r\n", $header) as $item) {
             list($headerName, $headerData) = explode(":", $item, 2);
