@@ -7,7 +7,6 @@ namespace Ant\Http;
  */
 class Body extends Stream
 {
-    // Todo Body Parsers
     // Todo Function createUploadFiles
     // Todo Function createFromData
     /**

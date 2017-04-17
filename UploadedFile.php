@@ -15,7 +15,37 @@ use Psr\Http\Message\UploadedFileInterface;
 class UploadedFile implements UploadedFileInterface
 {
     /**
-     * @var array
+     * @var int[]
+     */
+    protected static $errors = [
+        UPLOAD_ERR_OK,
+        UPLOAD_ERR_INI_SIZE,
+        UPLOAD_ERR_FORM_SIZE,
+        UPLOAD_ERR_PARTIAL,
+        UPLOAD_ERR_NO_FILE,
+        UPLOAD_ERR_NO_TMP_DIR,
+        UPLOAD_ERR_CANT_WRITE,
+        UPLOAD_ERR_EXTENSION,
+    ];
+
+
+    /**
+     * @var string
+     */
+    protected $clientFilename;
+
+    /**
+     * @var string
+     */
+    protected $clientMediaType;
+
+    /**
+     * @var int
+     */
+    protected $error;
+
+    /**
+     * @var null|string
      */
     protected $file;
 
@@ -25,9 +55,14 @@ class UploadedFile implements UploadedFileInterface
     protected $moved = false;
 
     /**
-     * @var Stream
+     * @var int
      */
-    protected $stream = null;
+    protected $size;
+
+    /**
+     * @var StreamInterface|null
+     */
+    protected $stream;
 
     /**
      * 加载上传文件,仅限POST上传
@@ -56,49 +91,185 @@ class UploadedFile implements UploadedFileInterface
                 }
                 $parsed[$field] = static::parseUploadedFiles($subArray);
             } else {
-                $parsed[$field] = new static($uploadedFile);
+                $parsed[$field] = new static(
+                    $uploadedFile['tmp_name'],
+                    $uploadedFile['size'],
+                    $uploadedFile['error'],
+                    $uploadedFile['name'],
+                    $uploadedFile['type']
+                );
             }
         }
 
         return $parsed;
     }
 
-    /**
-     * UploadedFile constructor.
-     * @param $file
-     */
-    public function __construct($file)
-    {
-        //在临时文件不存在时,尝试获取文件流
-        if (!isset($file['tmp_name'])) {
-            if (!isset($file['stream']) && !$file['stream'] instanceof StreamInterface) {
-                throw new InvalidArgumentException('File is invalid or not upload file via POST');
-            }
+    public function __construct(
+        $streamOrFile,
+        $size,
+        $errorStatus,
+        $clientFilename = null,
+        $clientMediaType = null
+    ) {
+        $this->setError($errorStatus);
+        $this->setSize($size);
+        $this->setClientFilename($clientFilename);
+        $this->setClientMediaType($clientMediaType);
 
-            $this->stream = $file['stream'];
+        if (!$this->isError()) {
+            $this->setStreamOrFile($streamOrFile);
         }
+    }
 
-        $this->file = $file;
+
+    /**
+     * Depending on the value set file or stream variable
+     *
+     * @param mixed $streamOrFile
+     * @throws InvalidArgumentException
+     */
+    protected function setStreamOrFile($streamOrFile)
+    {
+        if (is_string($streamOrFile)) {
+            $this->file = $streamOrFile;
+        } elseif (is_resource($streamOrFile)) {
+            $this->stream = new Stream($streamOrFile);
+        } elseif ($streamOrFile instanceof StreamInterface) {
+            $this->stream = $streamOrFile;
+        } else {
+            throw new InvalidArgumentException(
+                'Invalid stream or file provided for UploadedFile'
+            );
+        }
     }
 
     /**
-     * 获取文件流
-     *
-     * @return StreamInterface Stream representation of the uploaded file.
-     * @throws RuntimeException in cases when no stream is available.
-     * @throws RuntimeException in cases when no stream can be created.
+     * @param int $error
+     * @throws InvalidArgumentException
+     */
+    protected function setError($error)
+    {
+        if (false === is_int($error)) {
+            throw new InvalidArgumentException(
+                'Upload file error status must be an integer'
+            );
+        }
+
+        if (false === in_array($error, UploadedFile::$errors)) {
+            throw new InvalidArgumentException(
+                'Invalid error status for UploadedFile'
+            );
+        }
+
+        $this->error = $error;
+    }
+
+    /**
+     * @param int $size
+     * @throws InvalidArgumentException
+     */
+    protected function setSize($size)
+    {
+        if (false === is_int($size)) {
+            throw new InvalidArgumentException(
+                'Upload file size must be an integer'
+            );
+        }
+
+        $this->size = $size;
+    }
+
+    /**
+     * @param mixed $param
+     * @return boolean
+     */
+    protected function isStringOrNull($param)
+    {
+        return in_array(gettype($param), ['string', 'NULL']);
+    }
+
+    /**
+     * @param mixed $param
+     * @return boolean
+     */
+    protected function isStringNotEmpty($param)
+    {
+        return is_string($param) && false === empty($param);
+    }
+
+    /**
+     * @param string|null $clientFilename
+     * @throws InvalidArgumentException
+     */
+    protected function setClientFilename($clientFilename)
+    {
+        if (false === $this->isStringOrNull($clientFilename)) {
+            throw new InvalidArgumentException(
+                'Upload file client filename must be a string or null'
+            );
+        }
+
+        $this->clientFilename = $clientFilename;
+    }
+
+    /**
+     * @param string|null $clientMediaType
+     * @throws InvalidArgumentException
+     */
+    protected function setClientMediaType($clientMediaType)
+    {
+        if (false === $this->isStringOrNull($clientMediaType)) {
+            throw new InvalidArgumentException(
+                'Upload file client media type must be a string or null'
+            );
+        }
+
+        $this->clientMediaType = $clientMediaType;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isError()
+    {
+        return $this->getError() !== UPLOAD_ERR_OK;
+    }
+
+    /**
+     * @return boolean
+     */
+    protected function isMoved()
+    {
+        return $this->moved;
+    }
+
+    /**
+     * @throws RuntimeException if is moved or not ok
+     */
+    protected function validateActive()
+    {
+        if (true === $this->isError()) {
+            throw new RuntimeException('Cannot retrieve stream due to upload error');
+        }
+
+        if ($this->isMoved()) {
+            throw new RuntimeException('Cannot retrieve stream after it has already been moved');
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     * @throws RuntimeException if the upload was not successful.
      */
     public function getStream()
     {
-        if ($this->moved) {
-            throw new RuntimeException('File was moved to other directory');
+        $this->validateActive();
+
+        if ($this->stream instanceof StreamInterface) {
+            return $this->stream;
         }
 
-        if ($this->stream === null) {
-            $this->stream = new Stream(fopen($this->file['tmp_name'], 'r'));
-        }
-
-        return $this->stream;
+        return new Stream(fopen($this->file, "r+"));
     }
 
     /**
@@ -111,54 +282,34 @@ class UploadedFile implements UploadedFileInterface
      */
     public function moveTo($targetPath)
     {
-        if ($this->moved) {
-            throw new RuntimeException('File was moved to other directory');
+        $this->validateActive();
+
+        if (false === $this->isStringNotEmpty($targetPath)) {
+            throw new InvalidArgumentException(
+                'Invalid path provided for move operation; must be a non-empty string'
+            );
         }
 
-        $targetIsStream = strpos($targetPath, '://') > 0;
-
-        // 如果目标是文件,而且不可写入时
-        if (!$targetIsStream && !is_writable(dirname($targetPath))) {
-            throw new InvalidArgumentException('Upload target path is not writable');
-        }
-
-        if ($this->stream !== null) {
-            if (!$targetIsStream) {
-                // 删除文件之后再写入
-                unlink($targetPath);
-            }
-
+        if ($this->file) {
+            $this->moved = php_sapi_name() == 'cli'
+                ? rename($this->file, $targetPath)
+                : move_uploaded_file($this->file, $targetPath);
+        } else {
             // 将目标作为流打开
-            $targetStream = fopen($targetPath,'w+');
+            $targetStream = fopen($targetPath, 'w+');
             // 将流拷贝到目标文件上
             stream_copy_to_stream($this->stream->detach(), $targetStream);
             // 关闭流,减少损耗
             fclose($targetStream);
-        } elseif ($targetIsStream) {
-            // 处理流
-            if (!copy($this->file['tmp_name'], $targetPath)) {
-                throw new RuntimeException(sprintf('Error moving uploaded file %1s to %2s', $this->file['name'], $targetPath));
-            }
-            if (!unlink($this->file['tmp_name'])) {
-                throw new RuntimeException(sprintf('Error removing uploaded file %1s', $this->file['name']));
-            }
-        } elseif (substr(PHP_SAPI,0,3) === 'cgi') {
-            // 处理post上传
-            if (!is_uploaded_file($this->file['tmp_name'])) {
-                throw new RuntimeException(sprintf('%1s is not a valid uploaded file', $this->file['name']));
-            }
 
-            if (!move_uploaded_file($this->file['tmp_name'], $targetPath)) {
-                throw new RuntimeException(sprintf('Error moving uploaded file %1s to %2s', $this->file['name'], $targetPath));
-            }
-        } else {
-            // 当以Cli启动时的文件上传
-            if (!rename($this->file['tmp_name'], $targetPath)) {
-                throw new RuntimeException(sprintf('Error moving uploaded file %1s to %2s', $this->file['name'], $targetPath));
-            }
+            $this->moved = true;
         }
 
-        $this->moved = true;
+        if (false === $this->moved) {
+            throw new RuntimeException(
+                sprintf('Uploaded file could not be moved to %s', $targetPath)
+            );
+        }
     }
 
     /**
@@ -166,7 +317,7 @@ class UploadedFile implements UploadedFileInterface
      */
     public function getSize()
     {
-        return isset($this->file['size']) ? $this->file['size'] : null;
+        return $this->size;
     }
 
     /**
@@ -174,7 +325,7 @@ class UploadedFile implements UploadedFileInterface
      */
     public function getError()
     {
-        return isset($this->file['error']) ? $this->file['error'] : null;
+        return $this->error;
     }
 
     /**
@@ -182,7 +333,7 @@ class UploadedFile implements UploadedFileInterface
      */
     public function getClientFilename()
     {
-        return isset($this->file['name']) ? $this->file['name'] : null;
+        return $this->clientFilename;
     }
 
     /**
@@ -190,14 +341,6 @@ class UploadedFile implements UploadedFileInterface
      */
     public function getClientMediaType()
     {
-        return isset($this->file['type']) ? $this->file['type'] : null;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isError()
-    {
-        return $this->getError() !== UPLOAD_ERR_OK;
+        return $this->clientMediaType;
     }
 }

@@ -283,7 +283,7 @@ class Response extends Message implements ResponseInterface
         $protocol = '1.1'
     ) {
         $this->code = $code;
-        $this->headers = $header;
+        $this->setHeaders($header);
         $this->body = $body ? : new Body();
         $this->responsePhrase = $phrase;
         $this->protocolVersion = $protocol;

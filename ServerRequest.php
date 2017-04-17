@@ -6,6 +6,12 @@ use InvalidArgumentException;
 use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
+/**
+ * Todo 单元测试
+ * Class ServerRequest
+ * @package Ant\Http
+ * @see http://www.php-fig.org/psr/psr-7/
+ */
 class ServerRequest extends Request implements ServerRequestInterface
 {
     /**
@@ -76,20 +82,6 @@ class ServerRequest extends Request implements ServerRequestInterface
     protected $usesBody = false;
 
     /**
-     * 在“$_SERVER”中不是以“HTTP_”开头的Http头
-     *
-     * @var array
-     */
-    protected static $special = [
-        'CONTENT_TYPE' => 1,
-        'CONTENT_LENGTH' => 1,
-        'PHP_AUTH_USER' => 1,
-        'PHP_AUTH_PW' => 1,
-        'PHP_AUTH_DIGEST' => 1,
-        'AUTH_TYPE' => 1,
-    ];
-
-    /**
      * 通过Tcp输入流解析Http请求
      *
      * @param $receiveBuffer
@@ -148,10 +140,17 @@ class ServerRequest extends Request implements ServerRequestInterface
         $protocolVersion = '1.1',
         array $serverParams = []
     ) {
-        $this->serverParams = $serverParams;
-
         parent::__construct($method, $uri, $headers, $body, $protocolVersion);
 
+        $this->serverParams = $serverParams;
+        $this->__initialize();
+    }
+
+    /**
+     * 初始化对象
+     */
+    protected function __initialize()
+    {
         // 解析Get与Cookie参数
         parse_str($this->uri->getQuery(), $this->queryParams);
         parse_str(str_replace([';','; '], '&', $this->getHeaderLine('Cookie')), $this->cookieParams);
@@ -520,15 +519,17 @@ class ServerRequest extends Request implements ServerRequestInterface
             }
 
             if (preg_match('/name="(.*?)"; filename="(.*?)"$/', $disposition, $match)) {
-                $file = new Stream(fopen('php://temp','w'));
-                $file->write($bufferBody);
-                $file->rewind();
+                list(,$name, $clientName) = $match;
+                $stream = new Stream(fopen('php://temp','w'));
+                $stream->write($bufferBody);
+                $stream->seek(0);
 
-                $req->uploadFiles[$match[1]] = new UploadedFile([
-                    'stream'    => $file,
-                    'name'      => $match[1],
-                    'size'      => $file->getSize()
-                ]);
+                $req->uploadFiles[$name] = new UploadedFile(
+                    $stream,
+                    $stream->getSize(),
+                    UPLOAD_ERR_OK,
+                    $clientName
+                );
             } elseif (preg_match('/name="(.*?)"$/', $disposition, $match)) {
                 $data[$match[1]] = $bufferBody;
             }

@@ -6,9 +6,6 @@ use Psr\Http\Message\UriInterface;
 use Psr\Http\Message\RequestInterface;
 
 /**
- * Todo 将现有ServerRequest更改为CgiRequest
- * Todo 重构ServerRequest
- *
  * Class Request
  * @package Ant\Http
  * @see http://www.php-fig.org/psr/psr-7/
