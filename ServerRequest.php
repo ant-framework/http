@@ -170,6 +170,38 @@ class ServerRequest extends Request implements ServerRequestInterface
     }
 
     /**
+     * 获取重写后的http请求方式
+     *
+     * @return string
+     */
+    public function getMethod()
+    {
+        $method = $this->method;
+
+        // 检查是否在报头中重载了http动词
+        if ($customMethod = $this->getHeaderLine('x-http-method-override')) {
+            $method = $customMethod;
+        }
+
+        // 当请求方式为Post时,检查是否为表单提交,跟请求重写
+        if ($this->method == 'POST' && $customMethod = $this->getBodyParam('_method')) {
+            $method = $customMethod;
+        }
+
+        return strtoupper($method);
+    }
+
+    /**
+     * 获取原始的http请求方式
+     *
+     * @return string
+     */
+    public function getOriginalMethod()
+    {
+        return $this->method;
+    }
+
+    /**
      * @return array
      */
     public function getServerParams()

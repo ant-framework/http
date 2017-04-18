@@ -7,8 +7,6 @@ use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UploadedFileInterface;
 
 /**
- * Todo 简化
- *
  * Class UploadedFile
  * @package Ant\Http
  */
@@ -27,7 +25,6 @@ class UploadedFile implements UploadedFileInterface
         UPLOAD_ERR_CANT_WRITE,
         UPLOAD_ERR_EXTENSION,
     ];
-
 
     /**
      * @var string
@@ -104,6 +101,14 @@ class UploadedFile implements UploadedFileInterface
         return $parsed;
     }
 
+    /**
+     * UploadFile construct
+     * @param $streamOrFile
+     * @param $size
+     * @param $errorStatus
+     * @param null $clientFilename
+     * @param null $clientMediaType
+     */
     public function __construct(
         $streamOrFile,
         $size,
@@ -123,7 +128,7 @@ class UploadedFile implements UploadedFileInterface
 
 
     /**
-     * Depending on the value set file or stream variable
+     * 设置流资源跟文件路径
      *
      * @param mixed $streamOrFile
      * @throws InvalidArgumentException

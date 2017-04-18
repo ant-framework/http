@@ -47,7 +47,7 @@ EOT;
         $this->assertEquals('text/html;charset=utf-8',$response->getHeaderLine('Content-Type'));
         $this->assertEquals('keep-alive',$response->getHeaderLine('Connection'));
         $this->assertEquals('private',$response->getHeaderLine('Cache-Control'));
-        $this->assertEquals('Fri, 23 Dec 2016 17:45:55 GMT',$response->getHeaderLine('Expires'));
+        $this->assertEquals('Fri,23 Dec 2016 17:45:55 GMT',$response->getHeaderLine('Expires'));
         $this->assertEquals('Ant-Framework',$response->getHeaderLine('Server'));
 
         $cookies = $response->getCookies();

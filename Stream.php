@@ -10,6 +10,7 @@ use Psr\Http\Message\StreamInterface;
  * Class Stream
  * @package Ant\Http
  * Todo IteratorStream
+ * Todo LazyOpenStream
  * Todo 更新
  *
  * @note

@@ -373,19 +373,6 @@ class Response extends Message implements ResponseInterface
     }
 
     /**
-     * 向响应body写入内容
-     *
-     * @param $data
-     * @return $this
-     */
-    public function write($data)
-    {
-        $this->getBody()->write($data);
-
-        return $this;
-    }
-
-    /**
      * http重定向
      *
      * @param $url
