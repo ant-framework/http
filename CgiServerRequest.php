@@ -42,7 +42,7 @@ class CgiServerRequest extends ServerRequest
      * @param StreamInterface|null $body
      * @return static
      */
-    public static function createFromCgi(
+    public static function createFromGlobals(
         array $serverParams = [],
         array $cookieParams = [],
         array $queryParams = [],
@@ -64,7 +64,7 @@ class CgiServerRequest extends ServerRequest
 
         $uri = Uri::createFromServerParams($serverParams);
 
-        $body = $body ?: RequestBody::createFromCgi();
+        $body = $body ?: Body::createFromCgi();
 
         $protocol = isset($serverParams['SERVER_PROTOCOL'])
             ? str_replace('HTTP/', '', $serverParams['SERVER_PROTOCOL'])
@@ -101,9 +101,30 @@ class CgiServerRequest extends ServerRequest
     }
 
     /**
+     * @param string $method
+     * @param string $uri
+     * @param array $headers
+     * @param null $body
+     * @param string $protocolVersion
+     * @param array $serverParams
+     */
+    public function __construct(
+        $method,
+        $uri,
+        array $headers = [],
+        $body = null,
+        $protocolVersion = '1.1',
+        array $serverParams = []
+    ) {
+        parent::__construct($method, $uri, $headers, $body, $protocolVersion, $serverParams);
+
+        $this->initialize();
+    }
+
+    /**
      * 初始化对象
      */
-    protected function __initialize()
+    protected function initialize()
     {
         // 获取请求资源的路径
         $requestScriptName = $this->getServerParam('SCRIPT_NAME');

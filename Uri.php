@@ -112,10 +112,8 @@ class Uri implements UriInterface
     }
 
     /**
-     * 初始化Uri类
-     *
-     * Uri constructor.
-     * @param $uri
+     * @param string $uri
+     * @param array $options
      */
     public function __construct($uri = '', array $options = [])
     {

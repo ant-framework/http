@@ -6,7 +6,7 @@ use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\ResponseInterface;
 
 /**
- * Todo 响应分块
+ * Todo 响应分块 dechex($len) . "\r\n" . $buffer . "\r\n";
  * Todo Cookie对象(包含加密,读取,设置响应Cookie)
  * Class Response
  * @package Ant\Http
@@ -255,31 +255,17 @@ class Response extends Message implements ResponseInterface
     }
 
     /**
-     * 从Request中生成Response
-     *
-     * @param Request $request
-     * @return static
-     */
-    public static function prepare(Request $request)
-    {
-        $response = new static();
-        $response->keepImmutability(false);
-
-        return $response;
-    }
-
-    /**
      * @param int $code
      * @param array $header
      * @param StreamInterface|null $body
-     * @param null $phrase
+     * @param string $phrase
      * @param string $protocol
      */
     public function __construct(
         $code = 200,
         $header = [],
         StreamInterface $body = null,
-        $phrase = null,
+        $phrase = '',
         $protocol = '1.1'
     ) {
         $this->code = $code;

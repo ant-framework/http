@@ -75,54 +75,11 @@ class ServerRequest extends Request implements ServerRequestInterface
     ];
 
     /**
-     * body是否使用过
+     * 是否解析完Body
      *
      * @var bool
      */
-    protected $usesBody = false;
-
-    /**
-     * 通过Tcp输入流解析Http请求
-     *
-     * @param $receiveBuffer
-     * @param array $serverParams
-     * @return ServerRequest
-     */
-    final public static function createFromString($receiveBuffer, array $serverParams = [])
-    {
-        list($startLine, $headers, $body) = static::parseMessage($receiveBuffer);
-        // 解析起始行
-        list($method, $requestTarget, $protocol) = explode(' ', $startLine, 3);
-        // 获取Http协议版本
-        $protocolVersion = str_replace('HTTP/', '', $protocol);
-        // 获取Uri
-        $uri = static::createUri($requestTarget, $headers);
-
-        $request = new ServerRequest($method, $uri, $headers, $body, $protocolVersion, $serverParams);
-
-        return $request;
-    }
-
-    /**
-     * @param $path
-     * @param array $headers
-     * @return string
-     */
-    protected static function createUri($path, array $headers = [])
-    {
-        $hostKey = array_filter(array_keys($headers), function ($k) {
-            return strtolower($k) === 'host';
-        });
-
-        if (!$hostKey) {
-            return $path;
-        }
-
-        $host = $headers[reset($hostKey)][0];
-        $scheme = substr($host, -4) === ':443' ? 'https' : 'http';
-
-        return $scheme . '://' . $host . '/' . ltrim($path, '/');
-    }
+    protected $resolveBody = false;
 
     /**
      * @param string $method
@@ -140,20 +97,9 @@ class ServerRequest extends Request implements ServerRequestInterface
         $protocolVersion = '1.1',
         array $serverParams = []
     ) {
-        parent::__construct($method, $uri, $headers, $body, $protocolVersion);
-
         $this->serverParams = $serverParams;
-        $this->__initialize();
-    }
 
-    /**
-     * 初始化对象
-     */
-    protected function __initialize()
-    {
-        // 解析Get与Cookie参数
-        parse_str($this->uri->getQuery(), $this->queryParams);
-        parse_str(str_replace([';','; '], '&', $this->getHeaderLine('Cookie')), $this->cookieParams);
+        parent::__construct($method, $uri, $headers, $body, $protocolVersion);
     }
 
     /**
@@ -274,8 +220,8 @@ class ServerRequest extends Request implements ServerRequestInterface
      */
     public function withBody(StreamInterface $body)
     {
-        //当Body被修改后,允许重新解析body
-        $this->usesBody = false;
+        // 当Body被修改后,允许重新解析body
+        $this->resolveBody = false;
 
         return parent::withBody($body);
     }
@@ -287,8 +233,8 @@ class ServerRequest extends Request implements ServerRequestInterface
      */
     public function getUploadedFiles()
     {
-        if (!$this->usesBody) {
-            static::parseFromData($this->getBody()->__toString(), $this);
+        if (!$this->resolveBody) {
+            $this->parseBody();
         }
 
         return $this->uploadFiles;
@@ -313,11 +259,21 @@ class ServerRequest extends Request implements ServerRequestInterface
     public function getParsedBody()
     {
         // 解析成功直接返回解析结果,如果解析后的参数为空,不允许进行第二次解析
-        if (!empty($this->bodyParams) || $this->usesBody) {
+        if (!empty($this->bodyParams) || $this->resolveBody) {
             return $this->bodyParams;
         }
 
-        $this->usesBody = true;
+        $this->parseBody();
+
+        return $this->bodyParams;
+    }
+
+    /**
+     * 初始化Body参数
+     */
+    protected function parseBody()
+    {
+        $this->resolveBody = true;
 
         if ($contentType = $this->getContentType()) {
             // 用自定义方法解析Body内容
@@ -328,17 +284,15 @@ class ServerRequest extends Request implements ServerRequestInterface
                     [$this->getBody()->__toString(), $this]
                 );
 
-                if (!(is_null($parsed) || is_object($parsed) || is_array($parsed))) {
+                if (!is_null($parsed) && !is_object($parsed) && !is_array($parsed)) {
                     throw new RuntimeException(
                         'Request body media type parser return value must be an array, an object, or null'
                     );
                 }
 
-                return $this->bodyParams = $parsed;
+                $this->bodyParams = $parsed;
             }
         }
-
-        return null;
     }
 
     /**
@@ -414,7 +368,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      */
     public function withAttribute($name, $value)
     {
-        return $this->changeAttribute(['attributes',$name], $value);
+        return $this->changeAttribute(['attributes', $name], $value);
     }
 
     /**
@@ -426,12 +380,12 @@ class ServerRequest extends Request implements ServerRequestInterface
      */
     public function withoutAttribute($name)
     {
-        $self = clone $this;
-        if (array_key_exists($name, $self->attributes)) {
-            unset($self->attributes[$name]);
+        $attr = $this->attributes;
+        if (array_key_exists($name, $attr)) {
+            unset($attr[$name]);
         }
 
-        return $self;
+        return $this->changeAttribute('attributes', $attr);
     }
 
     /**
@@ -477,7 +431,7 @@ class ServerRequest extends Request implements ServerRequestInterface
             throw new InvalidArgumentException('Body parsers must be a callable');
         }
 
-        $this->usesBody = false;
+        $this->resolveBody = false;
         $this->bodyParsers[$subtype] = $parsers;
     }
 
@@ -550,6 +504,7 @@ class ServerRequest extends Request implements ServerRequestInterface
                 continue;
             }
 
+            // 普通数据为文件类型的超集,优先匹配文件类型
             if (preg_match('/name="(.*?)"; filename="(.*?)"$/', $disposition, $match)) {
                 list(,$name, $clientName) = $match;
                 $stream = new Stream(fopen('php://temp','w'));
@@ -571,6 +526,8 @@ class ServerRequest extends Request implements ServerRequestInterface
     }
 
     /**
+     * 获取From表单中的字段信息
+     *
      * @param $header
      * @return bool
      */

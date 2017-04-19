@@ -1,0 +1,22 @@
+POST / HTTP/1.1
+Host: www.example.com
+Connection: keep-alive
+Content-Length: 291
+Accept-Language: zh-CN,zh;q=0.8
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryOBVgGIBJ2oShfxN8
+Accept: application/json
+Cache-Control: no-cache
+Accept-Encoding: gzip, deflate, br
+Cookie: foo=bar;test_key=test_value
+
+------WebKitFormBoundaryOBVgGIBJ2oShfxN8
+Content-Disposition: form-data; name="foo"
+
+bar
+------WebKitFormBoundaryOBVgGIBJ2oShfxN8
+Content-Disposition: form-data; name="file-test"; filename="file-test.txt"
+Content-Type: text/plain
+
+foobar
+------WebKitFormBoundaryOBVgGIBJ2oShfxN8--
