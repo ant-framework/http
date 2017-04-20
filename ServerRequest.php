@@ -436,6 +436,19 @@ class ServerRequest extends Request implements ServerRequestInterface
     }
 
     /**
+     * @return string
+     */
+    protected function getStartLine()
+    {
+        return sprintf(
+            "%s %s HTTP/%s\r\n",
+            $this->getOriginalMethod(),
+            $this->getRequestTarget(),
+            $this->getProtocolVersion()
+        );
+    }
+
+    /**
      * @param string $input
      * @return array|null
      */

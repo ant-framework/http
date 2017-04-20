@@ -69,23 +69,12 @@ class Request extends Message implements RequestInterface
      */
     public function __toString()
     {
-        if ($size = $this->getBody()->getSize()) {
+        if (!$this->hasHeader("Content-Length")) {
             //设置Body长度
-            $this->headers['content-length'] = [$size];
+            $this->headers['content-length'] = [$this->getBody()->getSize()];
         }
 
-        $requestString = sprintf(
-            "%s %s HTTP/%s\r\n",
-            $this->getOriginalMethod(),
-            $this->getRequestTarget(),
-            $this->getProtocolVersion()
-        );
-
-        $requestString .= $this->headerToString();
-        $requestString .= PHP_EOL;
-        $requestString .= (string)$this->getBody();
-
-        return $requestString;
+        return $this->headerToString() . PHP_EOL . $this->getBody();
     }
 
     /**
@@ -272,5 +261,18 @@ class Request extends Message implements RequestInterface
         }
 
         $this->headers['host'] = [$host];
+    }
+
+    /**
+     * @return string
+     */
+    protected function getStartLine()
+    {
+        return sprintf(
+            "%s %s HTTP/%s\r\n",
+            $this->getMethod(),
+            $this->getRequestTarget(),
+            $this->getProtocolVersion()
+        );
     }
 }

@@ -37,6 +37,7 @@ class ServerRequestTest extends \PHPUnit_Framework_TestCase
         $request = $this->createRequest();
 
         //=================== Http动词是否为GET ===================//
+
         $this->assertEquals('GET', $request->getMethod());
         $this->assertTrue($request->isGet());
         $this->assertFalse($request->isPost());

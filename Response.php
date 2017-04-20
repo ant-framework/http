@@ -200,7 +200,7 @@ class Response extends Message implements ResponseInterface
         $cookies = [];
         foreach ($headerData as $content) {
             list($name, $value) = explode(':', $content, 2);
-            //cookie的报头名可重复,所以单独写入cookie数组
+            // cookie的报头名可重复,所以单独写入cookie数组
             $name = strtolower($name);
             if ('set-cookie' != $name) {
                 $headers[$name] = explode(',', trim($value));
@@ -212,15 +212,14 @@ class Response extends Message implements ResponseInterface
                 foreach ($cookieParams as $param) {
                     // 辨别 hostonly,secure,httponly 等参数
                     if (false !== strpos($param, '=')) {
-                        list($key, $value) = explode('=', $param);
-                        $options[trim($key)] = trim($value);
+                        list($key, $value) = array_map('trim', explode('=', $param));
+                        $options[$key] = $value;
                     } else {
                         $options[$param] = true;
                     }
                 }
 
-                // 取出可以识别cookie参数
-                $cookie[] = array_intersect_key($options, static::$cookieDefaults);
+                array_push($cookie, $options);
                 $cookies[] = $cookie;
             }
         }
@@ -234,7 +233,7 @@ class Response extends Message implements ResponseInterface
             $protocol
         );
 
-        //将cookie保存至response中
+        // 将cookie保存至response中
         return $response->replaceCookie($cookies);
     }
 
@@ -273,6 +272,14 @@ class Response extends Message implements ResponseInterface
         $this->body = $body ? : new Body();
         $this->responsePhrase = $phrase;
         $this->protocolVersion = $protocol;
+    }
+
+    /**
+     * @return string
+     */
+    public function __toString()
+    {
+        return $this->headerToString() . PHP_EOL . $this->getBody();
     }
 
     /**
@@ -326,8 +333,7 @@ class Response extends Message implements ResponseInterface
     public function replaceCookie(array $cookies)
     {
         $self = $this;
-        foreach ($cookies as $cookie) {
-            list($name, $value, $options) = $cookie;
+        foreach ($cookies as list($name, $value, $options)) {
             $self = $self->setCookie($name, $value, $options);
         }
 
@@ -464,20 +470,22 @@ class Response extends Message implements ResponseInterface
     /**
      * @return string
      */
-    public function __toString()
+    public function headerToString()
     {
-        $output = sprintf(
+        return parent::headerToString() . $this->getCookieHeader();
+    }
+
+    /**
+     * @return string
+     */
+    protected function getStartLine()
+    {
+        return sprintf(
             "HTTP/%s %s %s\r\n",
             $this->getProtocolVersion(),
             $this->getStatusCode(),
             $this->getReasonPhrase()
         );
-        $output .= $this->headerToString();
-        $output .= $this->getCookieHeader();
-        $output .= PHP_EOL;
-        $output .= (string)$this->getBody();
-
-        return $output;
     }
 
     /**
@@ -531,6 +539,6 @@ class Response extends Message implements ResponseInterface
             $result[] = 'Set-Cookie: '.implode('; ',$cookie);
         }
 
-        return $result ? implode(PHP_EOL,$result).PHP_EOL : '';
+        return $result ? implode(PHP_EOL,$result) . PHP_EOL : '';
     }
 }

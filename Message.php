@@ -43,6 +43,13 @@ abstract class Message implements MessageInterface
     abstract public function __toString();
 
     /**
+     * 获取头部首行
+     *
+     * @return string
+     */
+    abstract protected function getStartLine();
+
+    /**
      * 解析Http请求
      *
      * @param $message
@@ -290,7 +297,7 @@ abstract class Message implements MessageInterface
             $result[] = sprintf('%s: %s', $headerName, $headerValue);
         }
 
-        return $result ? implode(PHP_EOL, $result).PHP_EOL : '';
+        return $this->getStartLine() . implode(PHP_EOL, $result) . PHP_EOL;
     }
 
     /**
@@ -310,11 +317,7 @@ abstract class Message implements MessageInterface
             $name = strtolower($name);
             $value = array_map("trim", $value);
 
-            if (array_key_exists($name, $this->headers)) {
-                $this->headers[$name] = array_merge($this->headers[$name], $value);
-            } else {
-                $this->headers[$name] = $value;
-            }
+            $this->headers[$name] = $value;
         }
     }
 

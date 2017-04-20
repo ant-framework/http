@@ -1,7 +1,10 @@
 <?php
 namespace Ant\Http;
 
-
+/**
+ * Class CliServerRequest
+ * @package Ant\Http
+ */
 class CliServerRequest extends ServerRequest
 {
     /**
