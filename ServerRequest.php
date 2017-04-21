@@ -57,6 +57,13 @@ class ServerRequest extends Request implements ServerRequestInterface
     protected $attributes = [];
 
     /**
+     * 是否允许解析Body
+     *
+     * @var bool
+     */
+    protected $allowParseBody = true;
+
+    /**
      * body 解析器 根据subtype进行调用
      *
      * @var array
@@ -73,13 +80,6 @@ class ServerRequest extends Request implements ServerRequestInterface
         // 解析Url encode格式
         'application/x-www-form-urlencoded' =>  [ServerRequest::class, "parseUrlEncode"],
     ];
-
-    /**
-     * 是否解析完Body
-     *
-     * @var bool
-     */
-    protected $resolveBody = false;
 
     /**
      * @param string $method
@@ -108,8 +108,8 @@ class ServerRequest extends Request implements ServerRequestInterface
     public function __toString()
     {
         if ($cookie = $this->getCookieParams()) {
-            //设置Cookie
-            $this->headers['cookie'] = str_replace('&','; ',http_build_query($this->getCookieParams()));
+            // 设置Cookie
+            $this->headers['cookie'] = [str_replace('&', '; ', http_build_query($this->getCookieParams()))];
         }
 
         return parent::__toString();
@@ -221,7 +221,7 @@ class ServerRequest extends Request implements ServerRequestInterface
     public function withBody(StreamInterface $body)
     {
         // 当Body被修改后,允许重新解析body
-        $this->resolveBody = false;
+        $this->allowParseBody = true;
 
         return parent::withBody($body);
     }
@@ -233,7 +233,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      */
     public function getUploadedFiles()
     {
-        if (!$this->resolveBody) {
+        if (!$this->uploadFiles && $this->allowParseBody) {
             $this->parseBody();
         }
 
@@ -258,8 +258,8 @@ class ServerRequest extends Request implements ServerRequestInterface
      */
     public function getParsedBody()
     {
-        // 解析成功直接返回解析结果,如果解析后的参数为空,不允许进行第二次解析
-        if (!empty($this->bodyParams) || $this->resolveBody) {
+        // 如果已经解析过Body,或者Body参数不为空时返回
+        if (!$this->allowParseBody || !empty($this->bodyParams)) {
             return $this->bodyParams;
         }
 
@@ -273,26 +273,33 @@ class ServerRequest extends Request implements ServerRequestInterface
      */
     protected function parseBody()
     {
-        $this->resolveBody = true;
+        // 在Body跟解析更新前只允许解析一次Body
+        $this->allowParseBody = false;
+        $contentType = $this->getContentType();
 
-        if ($contentType = $this->getContentType()) {
-            // 用自定义方法解析Body内容
-            if ($this->body->getSize() !== 0 && isset($this->bodyParsers[$contentType])) {
-                // 调用body解析函数
-                $parsed = call_user_func_array(
-                    $this->bodyParsers[$contentType],
-                    [$this->getBody()->__toString(), $this]
-                );
-
-                if (!is_null($parsed) && !is_object($parsed) && !is_array($parsed)) {
-                    throw new RuntimeException(
-                        'Request body media type parser return value must be an array, an object, or null'
-                    );
-                }
-
-                $this->bodyParams = $parsed;
-            }
+        // Header有声明Body类型,Body不为空且解析器存在
+        if (
+            !$contentType ||
+            $this->body->getSize() !== 0 ||
+            empty($this->bodyParsers[$contentType])
+        ) {
+            return;
         }
+
+        // 调用body解析函数
+        $parsed = call_user_func_array(
+            $this->bodyParsers[$contentType],
+            [$this->getBody()->__toString(), $this]
+        );
+
+        // Body解析后类型必须为Null,Object,Array
+        if (!is_null($parsed) && !is_object($parsed) && !is_array($parsed)) {
+            throw new RuntimeException(
+                'Request body media type parser return value must be an array, an object, or null'
+            );
+        }
+
+        $this->bodyParams = $parsed;
     }
 
     /**
@@ -431,7 +438,7 @@ class ServerRequest extends Request implements ServerRequestInterface
             throw new InvalidArgumentException('Body parsers must be a callable');
         }
 
-        $this->resolveBody = false;
+        $this->allowParseBody = true;
         $this->bodyParsers[$subtype] = $parsers;
     }
 

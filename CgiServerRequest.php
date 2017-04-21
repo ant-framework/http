@@ -51,10 +51,6 @@ class CgiServerRequest extends ServerRequest
         StreamInterface $body = null
     ) {
         $serverParams = $serverParams ?: $_SERVER;
-        $cookieParams = $cookieParams ?: $_COOKIE;
-        $queryParams = $queryParams ?: $_GET;
-        $bodyParams = $bodyParams ?: $_POST;
-        $uploadFiles = UploadedFile::parseUploadedFiles($uploadFiles ?: $_FILES);
 
         $method = isset($serverParams['REQUEST_METHOD']) ? $serverParams['REQUEST_METHOD'] : 'GET';
 
@@ -72,11 +68,12 @@ class CgiServerRequest extends ServerRequest
 
         $serverRequest = new CgiServerRequest($method, $uri, $headers, $body, $protocol, $serverParams);
 
-        return $serverRequest
-            ->withCookieParams($cookieParams)
-            ->withQueryParams($queryParams)
-            ->withParsedBody($bodyParams)
-            ->withUploadedFiles($uploadFiles);
+        $serverRequest->cookieParams = $cookieParams ?: $_COOKIE;
+        $serverRequest->queryParams = $queryParams ?: $_GET;
+        $serverRequest->bodyParams = $bodyParams ?: $_POST;
+        $serverRequest->uploadFiles = UploadedFile::parseUploadedFiles($uploadFiles ?: $_FILES);
+
+        return $serverRequest;
     }
 
     /**

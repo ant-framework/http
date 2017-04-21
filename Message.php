@@ -61,7 +61,7 @@ abstract class Message implements MessageInterface
             throw new InvalidArgumentException('Invalid message');
         }
 
-        list($headerBuffer, $body) = explode("\r\n\r\n", $message, 2);
+        list($headerBuffer, $bodyBuffer) = explode("\r\n\r\n", $message, 2);
 
         $headerLines = explode("\r\n", $headerBuffer);
         $startLine = array_shift($headerLines);
@@ -74,7 +74,7 @@ abstract class Message implements MessageInterface
             }
         }
 
-        return [$startLine, $headers, $body];
+        return [$startLine, $headers, $bodyBuffer];
     }
 
     /**
@@ -134,13 +134,9 @@ abstract class Message implements MessageInterface
      */
     public function getHeader($name)
     {
-        $name = strtolower($name);
-
-        if (!$this->hasHeader($name)) {
-            return [];
-        }
-
-        return $this->headers[$name];
+        return $this->hasHeader($name)
+            ? $this->headers[strtolower($name)]
+            : [];
     }
 
     /**
@@ -151,9 +147,10 @@ abstract class Message implements MessageInterface
      */
     public function getHeaderLine($name)
     {
-        $value = $this->getHeader($name);
-
-        return !empty($value) ? implode(',',$value) : '';
+        // 通过逗号分割的不区分大小写的字符串形式的所有值
+        return $this->hasHeader($name)
+            ? implode(',', $this->getHeader($name))
+            : '';
     }
 
     /**
@@ -286,18 +283,15 @@ abstract class Message implements MessageInterface
      */
     public function headerToString()
     {
-        $result = [];
-
-        foreach ($this->getHeaders() as $headerName => $headerValue) {
-            if (is_array($headerValue)) {
-                $headerValue = implode(',', $headerValue);
-            }
-
-            $headerName = implode('-',array_map('ucfirst',explode('-', $headerName)));
-            $result[] = sprintf('%s: %s', $headerName, $headerValue);
+        $headers = [];
+        foreach ($this->getHeaders() as $name => $value) {
+            // 首字母大写,未来可能取消
+            $name = implode('-', array_map('ucfirst', explode('-', $name)));
+            $headers[] = sprintf('%s: %s', $name, implode(',', $value));
         }
 
-        return $this->getStartLine() . implode(PHP_EOL, $result) . PHP_EOL;
+        $headerBuffer = $headers ? implode(PHP_EOL, $headers) . PHP_EOL : "";
+        return $this->getStartLine() . $headerBuffer;
     }
 
     /**
@@ -310,8 +304,7 @@ abstract class Message implements MessageInterface
         $this->headers = [];
         foreach ($headers as $name => $value) {
             if (!is_array($value)) {
-                // 通过逗号分割的不区分大小写的字符串形式的所有值
-                $value = explode(',', $value);
+                $value = [$value];
             }
 
             $name = strtolower($name);

@@ -162,7 +162,7 @@ class Response extends Message implements ResponseInterface
      *
      * @var array
      */
-    protected $cookies = [];
+    protected $cookieParams = [];
 
     /**
      * cookie默认值
@@ -170,71 +170,58 @@ class Response extends Message implements ResponseInterface
      * @var array
      */
     protected static $cookieDefaults = [
+        // cookie名字
         'name'      =>  '',
-        'value'     =>  '',         // cookie值
-        'expires'   =>  0,          // 超时时间
-        'path'      =>  '/',        // cookie作用目录
-        'domain'    =>  '',         // cookie作用域名
-        'hostonly'  =>  null,       // 是否是host专属
-        'secure'    =>  false,      // 是否https专属
-        'httponly'  =>  false,      // 是否只有http可以使用cookie(启用后,JS将无法访问该cookie)
+        // cookie值
+        'value'     =>  '',
+        // 超时时间
+        'expires'   =>  0,
+        // cookie作用目录
+        'path'      =>  '/',
+        // cookie作用域名
+        'domain'    =>  '',
+        // 是否是host专属
+        'hostonly'  =>  false,
+        // 是否https专属
+        'secure'    =>  false,
+        // 除了发起Http请求外,Js是否可以使用cookie
+        'httponly'  =>  false,
     ];
 
     /**
      * 通过http报头跟body信息创建一个response对象
      *
-     * @param array $headerData
+     * @param array $headerLines
      * @param $bodyBuffer
      * @return static
      *
      * @see http://php.net/manual/zh/reserved.variables.httpresponseheader.php
      */
-    public static function createFromRequestResult(array $headerData, $bodyBuffer = '')
+    public static function createFromRequestResult(array $headerLines, $bodyBuffer = '')
     {
         //获取协议版本,响应码,响应短语
-        list($protocol ,$statusCode, $responsePhrase) = explode(' ', array_shift($headerData), 3);
+        list($protocol ,$statusCode, $responsePhrase) = explode(' ', array_shift($headerLines), 3);
         $protocol = str_replace('HTTP/', '', $protocol);
 
-        //获取http报头信息
+        // 获取http报头信息
         $headers = [];
-        $cookies = [];
-        foreach ($headerData as $content) {
-            list($name, $value) = explode(':', $content, 2);
-            // cookie的报头名可重复,所以单独写入cookie数组
+        foreach ($headerLines as $line) {
+            list($name, $value) = explode(':', $line, 2);
             $name = strtolower($name);
-            if ('set-cookie' != $name) {
-                $headers[$name] = explode(',', trim($value));
-            } else {
-                $cookieParams = explode(';', $value);
-                $cookie = array_map("trim", explode('=', array_shift($cookieParams)));
 
-                $options = [];
-                foreach ($cookieParams as $param) {
-                    // 辨别 hostonly,secure,httponly 等参数
-                    if (false !== strpos($param, '=')) {
-                        list($key, $value) = array_map('trim', explode('=', $param));
-                        $options[$key] = $value;
-                    } else {
-                        $options[$param] = true;
-                    }
-                }
-
-                array_push($cookie, $options);
-                $cookies[] = $cookie;
-            }
+            $headers[$name] = array_key_exists($name, $headers)
+                ? array_merge($headers[$name], [$value])
+                : [$value];
         }
 
         // 创建Response实例
-        $response = new static(
+        return new static(
             $statusCode,
             $headers,
             Body::createFrom($bodyBuffer),
             $responsePhrase,
             $protocol
         );
-
-        // 将cookie保存至response中
-        return $response->replaceCookie($cookies);
     }
 
     /**
@@ -248,30 +235,36 @@ class Response extends Message implements ResponseInterface
         }
 
         list($headerBuffer, $bodyBuffer) = explode("\r\n\r\n", $receiveBuffer, 2);
-        $headerData = explode("\r\n",$headerBuffer);
+        $headerLines = explode("\r\n",$headerBuffer);
 
-        return static::createFromRequestResult($headerData, $bodyBuffer);
+        return static::createFromRequestResult($headerLines, $bodyBuffer);
     }
 
     /**
      * @param int $code
-     * @param array $header
+     * @param array $headers
      * @param StreamInterface|null $body
      * @param string $phrase
      * @param string $protocol
      */
     public function __construct(
         $code = 200,
-        $header = [],
+        $headers = [],
         StreamInterface $body = null,
         $phrase = '',
         $protocol = '1.1'
     ) {
         $this->code = $code;
-        $this->setHeaders($header);
+        $this->setHeaders($headers);
         $this->body = $body ? : new Body();
         $this->responsePhrase = $phrase;
         $this->protocolVersion = $protocol;
+
+        if ($this->hasHeader('set-cookie')) {
+            // Cookie与Header分开处理
+            $this->extractCookieFromHeaders();
+            unset($this->headers['set-cookie']);
+        }
     }
 
     /**
@@ -327,33 +320,43 @@ class Response extends Message implements ResponseInterface
     }
 
     /**
-     * @param array $cookies
-     * @return $this
-     */
-    public function replaceCookie(array $cookies)
-    {
-        $self = $this;
-        foreach ($cookies as list($name, $value, $options)) {
-            $self = $self->setCookie($name, $value, $options);
-        }
-
-        return $self;
-    }
-
-    /**
+     * Todo 遵循Psr7的不变性
      * 设置Cookie
+     * 同一个域名,不同路径允许有多个同名Cookie
+     * 如果域名不同,路径相同,也可以重名Cookie
+     * 同一个域名,同一个路径,不允许有重名Cookie
      *
-     * @return $this
+     * @param $name
+     * @param $value
+     * @param array $options
      */
     public function setCookie($name, $value, array $options = [])
     {
         $options = array_merge(compact("name", "value"), $options);
         $options = array_replace(static::$cookieDefaults, $options);
-        // 在一个域名,路径下,只有一个cookie
-        $key = sprintf('%s@%s:%s', $name, $options['domain'], $options['path']);
+        $key = sprintf('%s@%s:%s', $options['domain'], $options['path'], $name);
 
         // 保存cookie
-        return $this->changeAttribute(['cookies', $key], $options);
+        $this->cookieParams[$key] = $options;
+    }
+
+    /**
+     * 获取指定域名路径下的Cookie
+     *
+     * @param $name
+     * @param string $domain
+     * @param string $path
+     * @return string
+     */
+    public function getCookie($name, $domain = '', $path = '/')
+    {
+        $key = sprintf('%s@%s:%s', $name, $domain, $path);
+
+        if (array_key_exists($key, $this->cookieParams)) {
+            return $this->cookieParams[$key];
+        }
+
+        return '';
     }
 
     /**
@@ -361,7 +364,7 @@ class Response extends Message implements ResponseInterface
      */
     public function getCookies()
     {
-        return $this->cookies;
+        return $this->cookieParams;
     }
 
     /**
@@ -373,7 +376,8 @@ class Response extends Message implements ResponseInterface
      */
     public function redirect($url, $status = 303)
     {
-        return $this->withStatus($status)
+        return $this
+            ->withStatus($status)
             ->withHeader('Location', $url);
     }
 
@@ -489,56 +493,79 @@ class Response extends Message implements ResponseInterface
     }
 
     /**
+     * 提取响应Cookie
+     */
+    protected function extractCookieFromHeaders()
+    {
+        foreach ($this->getHeader('set-cookie') as $value) {
+            $cookie = explode(';', $value);
+            list($name, $value) = array_map("trim", explode('=', array_shift($cookie)));
+
+            $options = [];
+            foreach ($cookie as $param) {
+                // 辨别 hostonly,secure,httponly 等参数
+                if (false !== strpos($param, '=')) {
+                    list($key, $value) = array_map('trim', explode('=', $param));
+                    $options[$key] = $value;
+                } else {
+                    $options[$param] = true;
+                }
+            }
+
+            $this->setCookie($name, $value, $options);
+        }
+    }
+
+    /**
      * @return string
      */
     protected function getCookieHeader()
     {
-        $result = [];
+        $setCookies = [];
         // 获取所有cookie参数
         foreach ($this->getCookies() as $properties) {
             $cookie = [];
 
-            // 设置cookie参数
-            $cookie[] = urlencode($properties['name']) . '=' . urlencode($properties['value']);
+            // 设置cookie参数 PHP_QUERY_RFC3986
+            $cookie[] = http_build_query([$properties['name'] => $properties['value']]);
 
-            // 设置cookie可用域名
-            if (isset($properties['domain'])) {
+            // 设置允许访问cookie的路径
+            $cookie[] = 'path=' . $properties['path'];
+
+            // 设置允许访问cookie的域名
+            if ($properties['domain']) {
                 $cookie[] = 'domain=' . $properties['domain'];
             }
 
-            // 设置cookie可用路径
-            if (isset($properties['path'])) {
-                $cookie[] = 'path=' . $properties['path'];
-            }
-
             // 设置cookie过期时间
-            if (isset($properties['expires'])) {
+            if ($properties['expires'] !== 0) {
                 if (is_string($properties['expires'])) {
                     $timestamp = strtotime($properties['expires']);
                 } else {
-                    $timestamp = (int)$properties['expires'];
+                    $timestamp = (int) $properties['expires'];
                 }
-                if ($timestamp !== 0) {
-                    $cookie[] = 'expires=' . gmdate('D, d-M-Y H:i:s e', $timestamp);
-                }
+
+                $cookie[] = 'expires=' . gmdate('D, d-M-Y H:i:s e', $timestamp);
             }
 
             // 是否https专属
-            if (isset($properties['secure']) && $properties['secure']) {
+            if ($properties['secure'] === true) {
                 $cookie[] = 'secure';
             }
 
-            if (isset($properties['hostonly']) && $properties['hostonly']) {
-                $cookie[] = 'HostOnly';
+            // 设置host专属
+            if ($properties['hostonly'] === true) {
+                $cookie[] = 'hostonly';
             }
 
-            if (isset($properties['httponly']) && $properties['httponly']) {
-                $cookie[] = 'HttpOnly';
+            // 设置Http专属
+            if ($properties['httponly'] === true) {
+                $cookie[] = 'httponly';
             }
 
-            $result[] = 'Set-Cookie: '.implode('; ',$cookie);
+            $setCookies[] = sprintf("Set-Cookie: %s", implode('; ',$cookie));
         }
 
-        return $result ? implode(PHP_EOL,$result) . PHP_EOL : '';
+        return $setCookies ? implode(PHP_EOL, $setCookies) . PHP_EOL : '';
     }
 }

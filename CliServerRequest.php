@@ -24,9 +24,7 @@ class CliServerRequest extends ServerRequest
         // 获取Uri
         $uri = static::createUri($requestTarget, $headers);
 
-        $request = new CliServerRequest($method, $uri, $headers, $body, $protocolVersion, $serverParams);
-
-        return $request;
+        return new CliServerRequest($method, $uri, $headers, $body, $protocolVersion, $serverParams);
     }
 
     /**
@@ -69,6 +67,9 @@ class CliServerRequest extends ServerRequest
         parent::__construct($method, $uri, $headers, $body, $protocolVersion, $serverParams);
         // 解析Get与Cookie参数
         parse_str($this->uri->getQuery(), $this->queryParams);
-        parse_str(str_replace([';','; '], '&', $this->getHeaderLine('Cookie')), $this->cookieParams);
+
+        if ($this->hasHeader("Cookie")) {
+            parse_str(str_replace([';','; '], '&', $this->getHeaderLine('Cookie')), $this->cookieParams);
+        }
     }
 }
