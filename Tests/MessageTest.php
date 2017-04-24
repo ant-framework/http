@@ -96,4 +96,5 @@ class MessageTest extends \PHPUnit_Framework_TestCase
 class HttpMessage extends Message
 {
     public function __toString(){}
+    public function getStartLine(){}
 }

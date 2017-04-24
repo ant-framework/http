@@ -280,7 +280,7 @@ class ServerRequest extends Request implements ServerRequestInterface
         // Header有声明Body类型,Body不为空且解析器存在
         if (
             !$contentType ||
-            $this->body->getSize() !== 0 ||
+            $this->body->getSize() === 0 ||
             empty($this->bodyParsers[$contentType])
         ) {
             return;
@@ -488,7 +488,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      */
     protected static function parseUrlEncode($input)
     {
-        parse_str($input, $data);
+        parse_str(trim($input), $data);
         return $data;
     }
 

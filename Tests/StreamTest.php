@@ -43,7 +43,7 @@ class StreamTest extends \PHPUnit_Framework_TestCase
      */
     public function testReadStream()
     {
-        $filename = './fixtures/Test_Stream.txt';
+        $filename = __DIR__ . '/fixtures/Test_Stream.txt';
         $stream = new Stream(fopen($filename, 'r'));
 
         $this->assertEquals('f',$stream->read(1));

@@ -336,7 +336,7 @@ class Stream implements StreamInterface
             !is_numeric($content) &&
             !method_exists($content,'__toString')
         ) {
-            //参数错误
+            // 参数错误
             throw new InvalidArgumentException(sprintf(
                 'The Response content must be a string or object implementing __toString(), "%s" given.',
                 gettype($content)
@@ -344,7 +344,7 @@ class Stream implements StreamInterface
         }
 
         if (!$this->isWritable()) {
-            //写入失败
+            // 写入失败
             throw new RuntimeException('Cannot write to a non-writable stream');
         }
 

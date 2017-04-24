@@ -1,9 +1,9 @@
 <?php
 namespace Test;
 
-use Ant\Http\CliServerRequest;
 use Ant\Http\Uri;
 use Ant\Http\ServerRequest;
+use Ant\Http\CliServerRequest;
 
 // Todo 提高单元测试覆盖率
 // Todo 提升单元测试代码质量
@@ -51,11 +51,10 @@ class ServerRequestTest extends \PHPUnit_Framework_TestCase
 
     public function testHeaderOverrideRequestMethod()
     {
-        $requestString = <<<EOT
-GET /Test HTTP/1.1
-X-Http-Method-Override: PATCH
-Host: www.example.com\r\n\r\n
-EOT;
+        $requestString =
+            "GET /Test HTTP/1.1\r\n".
+            "X-Http-Method-Override: PATCH\r\n".
+            "Host: www.example.com\r\n\r\n";
 
         //================= 在Http头部重写请求方法后，是否会替换原来的请求方法 =================//
         $request = CliServerRequest::createFromString($requestString);
@@ -71,12 +70,11 @@ EOT;
 
     public function testBodyParamOverrideRequestMethod()
     {
-        $requestString = <<<EOT
-POST /Test HTTP/1.1
-Content-Type: application/json
-Host: www.example.com\r\n
-{"_method":"DELETE"}
-EOT;
+        $requestString =
+            "POST /Test HTTP/1.1\r\n".
+            "Content-Type: application/json\r\n".
+            "Host: www.example.com\r\n\r\n".
+            "{\"_method\":\"DELETE\"}";
 
         //================= 当请求为POST的时候尝试用post参数重写请求方法 =================//
         $request = CliServerRequest::createFromString($requestString);
@@ -92,14 +90,14 @@ EOT;
     {
         //================================== 测试Uri ==================================//
         $request = $this->createRequest();
-        //获取Uri
+        // 获取Uri
         $this->assertEquals('/Test', $request->getUri()->getPath());
         $this->assertEquals('/Test?key=value#hello', $request->getRequestTarget());
         $this->assertEquals('http://www.example.com:80/Test?key=value#hello', (string)$request->getUri());
         $this->assertEquals(['key' => 'value'], $request->getQueryparams());
 
         //================================== 测试请求目标对GET参数与Uri的影响 ==================================//
-        //修改请求目标不应该影响主机名
+        // 修改请求目标不应该影响主机名
         $newRequest = $request->withRequestTarget('http://test.com/Demo?name=alex&age=18');
         $this->assertEquals('/Demo', $newRequest->getUri()->getPath());
         $this->assertEquals('/Demo?name=alex&age=18', $newRequest->getRequestTarget());
@@ -108,14 +106,14 @@ EOT;
         $this->assertEquals("www.example.com", $newRequest->getHeaderLine("Host"));
 
         //================================== 测试GET参数对请求Uri的影响 ==================================//
-        //修改Get参数
+        // 修改Get参数
         $newRequest = $request->withQueryParams(['foo' => 'bar']);
         $this->assertEquals('/Test?foo=bar#hello', $newRequest->getRequestTarget());
         $this->assertEquals(['foo' => 'bar'], $newRequest->getQueryParams());
         $this->assertEquals('http://www.example.com:80/Test?foo=bar#hello', (string)$newRequest->getUri());
 
         //================================== 测试Uri对请求目标的影响 ==================================//
-        //修改Uri
+        // 修改Uri
         $newRequest = $request->withUri(new Uri('http://www.domain.com/foobar?test_key=test_value'));
         $this->assertEquals('/foobar?test_key=test_value', $newRequest->getRequestTarget());
         $this->assertEquals('/foobar', $newRequest->getUri()->getPath());
@@ -160,17 +158,27 @@ EOT;
      */
     public function testContentTypeIsJson()
     {
-        $requestString = <<<EOT
-POST /Test HTTP/1.1
-Content-Type: application/json
-Host: www.example.com\r\n
-{"foo":"bar","fii":"bae"}
-EOT;
-        $request = CliServerRequest::createFromString($requestString);
+        $filename = __DIR__ . "/fixtures/BodyIsJson.txt";
 
-        $this->assertEquals('bar', $request->getBodyParam('foo'));
-        $this->assertEquals('bae', $request->getBodyParam('fii'));
-        $this->assertEquals(['foo' => 'bar','fii' => 'bae'], $request->getParsedBody());
+        if (file_exists($filename) && is_readable($filename)) {
+            $request = CliServerRequest::createFromString(
+                file_get_contents($filename)
+            );
+
+            $this->assertTrue(is_array($request->getParsedBody()));
+            $this->assertEquals($request->getBodyParam('data'), [
+                [
+                    "name"  =>  "anlun",
+                    "age"   =>  "20",
+                    "sex"   =>  "male"
+                ],
+                [
+                    "name"  =>  "annie",
+                    "age"   =>  "23",
+                    "sex"   =>  "female"
+                ]
+            ]);
+        }
     }
 
     /**
@@ -178,18 +186,17 @@ EOT;
      */
     public function testContentTypeIsXml()
     {
-        $requestString = <<<EOT
-POST /Test HTTP/1.1
-Content-Type: application/xml
-Host: www.example.com\r\n
-<?xml version="1.0"?>
-<xml><foo>bar</foo><fii>bae</fii></xml>
-EOT;
-        $request = CliServerRequest::createFromString($requestString);
+        $filename = __DIR__ . "/fixtures/BodyIsXml.txt";
 
-        $this->assertEquals('bar', $request->getBodyParam('foo'));
-        $this->assertEquals('bae', $request->getBodyParam('fii'));
-        $this->assertInstanceOf(\SimpleXMLElement::class, $request->getParsedBody());
+        if (file_exists($filename) && is_readable($filename)) {
+            $request = CliServerRequest::createFromString(
+                file_get_contents($filename)
+            );
+
+            $this->assertEquals('bar', $request->getBodyParam('foo'));
+            $this->assertEquals('bae', $request->getBodyParam('fii'));
+            $this->assertInstanceOf(\SimpleXMLElement::class, $request->getParsedBody());
+        }
     }
 
     /**
@@ -197,17 +204,17 @@ EOT;
      */
     public function testContentTypeIsUrlEncode()
     {
-        $requestString = <<<EOT
-POST /Test HTTP/1.1
-Content-Type: application/x-www-form-urlencoded
-Host: www.example.com\r\n
-foo=bar&fii=bae
-EOT;
-        $request = CliServerRequest::createFromString($requestString);
+        $filename = __DIR__ . "/fixtures/BodyIsUrlEncode.txt";
 
-        $this->assertEquals('bar', $request->getBodyParam('foo'));
-        $this->assertEquals('bae', $request->getBodyParam('fii'));
-        $this->assertEquals(['foo' => 'bar','fii' => 'bae'], $request->getParsedBody());
+        if (file_exists($filename) && is_readable($filename)) {
+            $request = CliServerRequest::createFromString(
+                file_get_contents($filename)
+            );
+
+            $this->assertEquals('bar', $request->getBodyParam('foo'));
+            $this->assertEquals('bae', $request->getBodyParam('fii'));
+            $this->assertEquals(['foo' => 'bar','fii' => 'bae'], $request->getParsedBody());
+        }
     }
 
     /**
@@ -215,40 +222,15 @@ EOT;
      */
     public function testBodyIsForm()
     {
-        $requestString = <<<EOT
-POST / HTTP/1.1
-Host: 127.0.0.1:81
-Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryF7ujiYJ1r6fEQ1Qu\r\n
-------WebKitFormBoundaryF7ujiYJ1r6fEQ1Qu
-Content-Disposition: form-data; name="foo"
+        $filename = __DIR__ . "/fixtures/BodyIsForm.txt";
 
-bar
-------WebKitFormBoundaryF7ujiYJ1r6fEQ1Qu
-Content-Disposition: form-data; name="fii"
+        if (file_exists($filename) && is_readable($filename)) {
+            $request = CliServerRequest::createFromString(
+                file_get_contents($filename)
+            );
 
-bae
-------WebKitFormBoundaryF7ujiYJ1r6fEQ1Qu--\r\n\r\n
-EOT;
-        $request = CliServerRequest::createFromString($requestString);
-
-        $this->assertEquals('bar', $request->getBodyParam('foo'));
-        $this->assertEquals('bae', $request->getBodyParam('fii'));
-        $this->assertEquals(['foo' => 'bar','fii' => 'bae'], $request->getParsedBody());
-    }
-
-    /**
-     * 测试修改body参数对request对象的影响
-     */
-    public function testToModifyTheEffectsOfBodyParams()
-    {
-        $request = (new ServerRequest('POST','http://www.example.com'))
-            ->withHeader('Content-Type','application/json')
-            ->withParsedBody([
-                'foo'   =>  'bar'
-            ]);
-
-        $this->assertEquals('bar', $request->getBodyParam('foo'));
-        $this->assertNotEquals("POST / HTTP/1.1\r\nHost: www.example.com:80\r\nContent-Type: application/json\r\n\r\n{\"foo\":\"bar\"}", $request->__toString());
-        $this->assertEquals("POST / HTTP/1.1\r\nHost: www.example.com:80\r\nContent-Type: application/json\r\n\r\n", $request->__toString());
+            $this->assertEquals('bar', $request->getBodyParam('foo'));
+            // Todo 文件
+        }
     }
 }

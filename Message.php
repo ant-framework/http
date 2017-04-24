@@ -257,26 +257,6 @@ abstract class Message implements MessageInterface
     }
 
     /**
-     * 设置对象不变性
-     * 根据PSR-7的接口要求
-     * 每次修改请求内容或者响应内容
-     * 都要保证原有数据不能被覆盖
-     * 所以在改变了一项属性的时候需要clone一个相同的类
-     * 去改变那个相同的类的属性，通过这种方式保证原有数据不被覆盖
-     * 本人出于损耗与易用性，给这个保持不变性加上了一个开关
-     *
-     * @param bool|true $enable
-     * @return self
-     * @see http://www.php-fig.org/psr/psr-7/meta/
-     */
-    public function keepImmutability($enable = true)
-    {
-        $this->immutability = $enable;
-
-        return $this;
-    }
-
-    /**
      * 输出Http头字符串
      *
      * @return string
@@ -312,6 +292,26 @@ abstract class Message implements MessageInterface
 
             $this->headers[$name] = $value;
         }
+    }
+
+    /**
+     * 设置对象不变性
+     * 根据PSR-7的接口要求
+     * 每次修改请求内容或者响应内容
+     * 都要保证原有数据不能被覆盖
+     * 所以在改变了一项属性的时候需要clone一个相同的类
+     * 去改变那个相同的类的属性，通过这种方式保证原有数据不被覆盖
+     * 本人出于损耗与易用性，给这个保持不变性加上了一个开关
+     *
+     * @param bool|true $enable
+     * @return self
+     * @see http://www.php-fig.org/psr/psr-7/meta/
+     */
+    public function keepImmutability($enable = true)
+    {
+        $this->immutability = $enable;
+
+        return $this;
     }
 
     /**

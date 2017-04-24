@@ -11,16 +11,6 @@ Accept-Encoding: gzip, deflate, br
 
 <?xml version="1.0" encoding="utf-8"?>
 <xml>
-	<data>
-		<item id="0">
-			<name>anlun</name>
-			<age>20</age>
-			<sex>male</sex>
-		</item>
-		<item id="1">
-			<name>annie</name>
-			<age>23</age>
-			<sex>female</sex>
-		</item>
-	</data>
+    <foo>bar</foo>
+    <fii>bae</fii>
 </xml>

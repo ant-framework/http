@@ -8,7 +8,7 @@ Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryOBVgGIBJ2oShfx
 Accept: application/json
 Cache-Control: no-cache
 Accept-Encoding: gzip, deflate, br
-Cookie: foo=bar;test_key=test_value
+Cookie: foo=bar; test_key=test_value
 
 ------WebKitFormBoundaryOBVgGIBJ2oShfxN8
 Content-Disposition: form-data; name="foo"

@@ -69,7 +69,7 @@ class CliServerRequest extends ServerRequest
         parse_str($this->uri->getQuery(), $this->queryParams);
 
         if ($this->hasHeader("Cookie")) {
-            parse_str(str_replace([';','; '], '&', $this->getHeaderLine('Cookie')), $this->cookieParams);
+            parse_str(str_replace([';', '; '], '&', $this->getHeaderLine('Cookie')), $this->cookieParams);
         }
     }
 }

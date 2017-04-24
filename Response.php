@@ -334,7 +334,7 @@ class Response extends Message implements ResponseInterface
     {
         $options = array_merge(compact("name", "value"), $options);
         $options = array_replace(static::$cookieDefaults, $options);
-        $key = sprintf('%s@%s:%s', $options['domain'], $options['path'], $name);
+        $key = sprintf('%s@%s:%s', $name, $options['domain'], $options['path']);
 
         // 保存cookie
         $this->cookieParams[$key] = $options;
@@ -505,8 +505,8 @@ class Response extends Message implements ResponseInterface
             foreach ($cookie as $param) {
                 // 辨别 hostonly,secure,httponly 等参数
                 if (false !== strpos($param, '=')) {
-                    list($key, $value) = array_map('trim', explode('=', $param));
-                    $options[$key] = $value;
+                    $arg = array_map('trim', explode('=', $param));
+                    $options[$arg[0]] = $arg[1];
                 } else {
                     $options[$param] = true;
                 }

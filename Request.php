@@ -69,7 +69,7 @@ class Request extends Message implements RequestInterface
      */
     public function __toString()
     {
-        if (!$this->hasHeader("Content-Length")) {
+        if (!$this->isGet() && !$this->hasHeader("Content-Length")) {
             //设置Body长度
             $this->headers['content-length'] = [$this->getBody()->getSize()];
         }
