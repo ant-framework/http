@@ -3,6 +3,7 @@ namespace Ant\Http;
 
 use RuntimeException;
 use InvalidArgumentException;
+use Psr\Http\Message\UriInterface;
 use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -148,6 +149,21 @@ class ServerRequest extends Request implements ServerRequestInterface
     }
 
     /**
+     * 设置uri
+     *
+     * @param UriInterface $uri
+     * @param bool|false $preserveHost
+     * @return self
+     */
+    public function withUri(UriInterface $uri, $preserveHost = false)
+    {
+        $self = parent::withUri($uri, $preserveHost);
+        parse_str($uri->getQuery(), $self->queryParams);
+
+        return $self;
+    }
+
+    /**
      * @return array
      */
     public function getServerParams()
@@ -169,7 +185,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      * 设置cookie参数
      *
      * @param array $cookies
-     * @return ServerRequest
+     * @return self
      */
     public function withCookieParams(array $cookies)
     {
@@ -190,7 +206,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      * 设置查询参数
      *
      * @param array $query
-     * @return ServerRequest
+     * @return self
      */
     public function withQueryParams(array $query)
     {
@@ -205,7 +221,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      * 向get中添加参数
      *
      * @param array $query
-     * @return ServerRequest
+     * @return self
      */
     public function withAddedQueryParams(array $query)
     {
@@ -216,7 +232,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      * 添加body数据
      *
      * @param StreamInterface $body
-     * @return ServerRequest
+     * @return self
      */
     public function withBody(StreamInterface $body)
     {
@@ -244,7 +260,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      * 添加上传文件信息
      *
      * @param array $uploadedFiles
-     * @return ServerRequest
+     * @return self
      */
     public function withUploadedFiles(array $uploadedFiles)
     {
@@ -331,7 +347,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      * 设置body解析结果
      *
      * @param array|null|object $data
-     * @return ServerRequest
+     * @return self
      */
     public function withParsedBody($data)
     {
@@ -371,7 +387,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      *
      * @param string $name
      * @param mixed $value
-     * @return ServerRequest
+     * @return self
      */
     public function withAttribute($name, $value)
     {
@@ -383,7 +399,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      *
      * @see getAttributes()
      * @param string $name .
-     * @return ServerRequest
+     * @return self
      */
     public function withoutAttribute($name)
     {

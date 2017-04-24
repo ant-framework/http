@@ -115,14 +115,6 @@ class CgiServerRequest extends ServerRequest
     ) {
         parent::__construct($method, $uri, $headers, $body, $protocolVersion, $serverParams);
 
-        $this->initialize();
-    }
-
-    /**
-     * 初始化对象
-     */
-    protected function initialize()
-    {
         // 获取请求资源的路径
         $requestScriptName = $this->getServerParam('SCRIPT_NAME');
         $requestScriptDir = dirname($requestScriptName);

@@ -47,6 +47,11 @@ class Stream implements StreamInterface
     protected $metadata = [];
 
     /**
+     * @var int|null 流的大小
+     */
+    protected $size = null;
+
+    /**
      * 可用读写模式
      *
      * @var array
@@ -146,10 +151,10 @@ class Stream implements StreamInterface
         }
 
         try {
-            $this->rewind();
+            $this->seek(0);
             return $this->getContents();
         } catch (RuntimeException $e) {
-            //如果不可读返回空字符串
+            // 如果不可读返回空字符串
             return '';
         }
     }
@@ -199,9 +204,13 @@ class Stream implements StreamInterface
             return null;
         }
 
-        $stat = fstat($this->stream);
+        if (is_null($this->size)) {
+            $stat = fstat($this->stream);
 
-        return isset($stat['size']) ? $stat['size'] : null;
+            $this->size = isset($stat['size']) ? $stat['size'] : null;
+        }
+
+        return $this->size;
     }
 
     /**
@@ -212,7 +221,9 @@ class Stream implements StreamInterface
      */
     public function tell()
     {
-        if (false === $position = ftell($this->stream)) {
+        $position = ftell($this->stream);
+
+        if ($position === false) {
             throw new RuntimeException('Unable to get position of stream');
         }
 
@@ -249,7 +260,7 @@ class Stream implements StreamInterface
      */
     public function seek($offset, $whence = SEEK_SET)
     {
-        if (!$this->isSeekable()) {
+        if (!$this->isSeekable) {
             throw new RuntimeException('Stream is not seekable');
         }
 
@@ -347,6 +358,9 @@ class Stream implements StreamInterface
             // 写入失败
             throw new RuntimeException('Cannot write to a non-writable stream');
         }
+
+        // 清除之前的size记录
+        $this->size = null;
 
         if (($written = fwrite($this->stream, (string)$content)) === false) {
             throw new RuntimeException('Unable to write to stream');

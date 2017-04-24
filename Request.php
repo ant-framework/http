@@ -91,7 +91,7 @@ class Request extends Message implements RequestInterface
      * 设置请求方式
      *
      * @param string $method
-     * @return Request
+     * @return self
      */
     public function withMethod($method)
     {
@@ -122,7 +122,7 @@ class Request extends Message implements RequestInterface
      * 设置请求资源
      *
      * @param mixed $requestTarget
-     * @return Request
+     * @return self
      */
     public function withRequestTarget($requestTarget)
     {
@@ -135,8 +135,6 @@ class Request extends Message implements RequestInterface
         $path = isset($meta['path']) ? $meta['path'] : '';
         $query = isset($meta['query']) ? $meta['query'] : '';
         $fragment = isset($meta['fragment']) ? $meta['fragment'] : '';
-
-        parse_str($query, $this->queryParams);
 
         $uri = $this->uri
             ->withPath($path)
@@ -162,21 +160,14 @@ class Request extends Message implements RequestInterface
      *
      * @param UriInterface $uri
      * @param bool|false $preserveHost
-     * @return Request
+     * @return self
      */
     public function withUri(UriInterface $uri, $preserveHost = false)
     {
         $self = $this->changeAttribute('uri', $uri);
-        parse_str($uri->getQuery(), $self->queryParams);
 
-        // 如果开启host保护,原Host为空且新Uri包含Host时才更新
-        if (!$preserveHost) {
-            $host = explode(',', $uri->getHost());
-        } elseif ((!$this->hasHeader('host') || empty($this->getHeaderLine('host'))) && $uri->getHost() !== '') {
-            $host = explode(',', $uri->getHost());
-        }
-
-        if (isset($host)) {
+        // 关闭了Host保护,或者主机名不存在时更新HOST
+        if (!$preserveHost || !isset($this->headers['host'])) {
             $self->updateHostFromUri();
         }
 
@@ -252,6 +243,7 @@ class Request extends Message implements RequestInterface
     {
         $host = $this->uri->getHost();
 
+        // Uri包含主机名时更新
         if ($host == '') {
             return;
         }
