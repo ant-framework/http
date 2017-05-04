@@ -31,7 +31,7 @@ class Request extends Message implements RequestInterface
      * @param string $method                    Http动词
      * @param string $uri                       请求的Uri
      * @param array $headers                    Http头
-     * @param mixed $body        Body内容
+     * @param mixed $body                       Body内容
      * @param string $protocolVersion           Http协议版本
      */
     public function __construct(
@@ -56,8 +56,7 @@ class Request extends Message implements RequestInterface
         }
 
         if ($body !== "" && $body !== null) {
-            // Todo Lazy Stream
-            $this->body = Body::createFrom($body);
+            $this->body = Stream::createFrom($body);
         }
     }
 
@@ -69,8 +68,8 @@ class Request extends Message implements RequestInterface
      */
     public function __toString()
     {
-        if (!$this->isGet() && !$this->hasHeader("Content-Length")) {
-            //设置Body长度
+        if (!$this->getMethod() == "GET" && !$this->hasHeader("Content-Length")) {
+            // 设置Body长度
             $this->headers['content-length'] = [$this->getBody()->getSize()];
         }
 
@@ -160,7 +159,7 @@ class Request extends Message implements RequestInterface
      *
      * @param UriInterface $uri
      * @param bool|false $preserveHost
-     * @return self
+     * @return static
      */
     public function withUri(UriInterface $uri, $preserveHost = false)
     {
@@ -172,57 +171,6 @@ class Request extends Message implements RequestInterface
         }
 
         return $self;
-    }
-
-    /**
-     * 检查请求方式
-     *
-     * @param $method
-     * @return bool
-     */
-    public function isMethod($method)
-    {
-        return $this->getMethod() === $method;
-    }
-
-    /**
-     * 查看是否是GET请求
-     *
-     * @return bool
-     */
-    public function isGet()
-    {
-        return $this->isMethod('GET');
-    }
-
-    /**
-     * 查看是否是POST请求
-     *
-     * @return bool
-     */
-    public function isPost()
-    {
-        return $this->isMethod('POST');
-    }
-
-    /**
-     * 查看是否是PUT请求
-     *
-     * @return bool
-     */
-    public function isPut()
-    {
-        return $this->isMethod('PUT');
-    }
-
-    /**
-     * 查看是否是DELETE请求
-     *
-     * @return bool
-     */
-    public function isDelete()
-    {
-        return $this->isMethod('DELETE');
     }
 
     /**

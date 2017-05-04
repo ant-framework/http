@@ -153,7 +153,7 @@ class ServerRequest extends Request implements ServerRequestInterface
      *
      * @param UriInterface $uri
      * @param bool|false $preserveHost
-     * @return self
+     * @return static
      */
     public function withUri(UriInterface $uri, $preserveHost = false)
     {
@@ -211,7 +211,7 @@ class ServerRequest extends Request implements ServerRequestInterface
     public function withQueryParams(array $query)
     {
         $result = $this->changeAttribute('queryParams', $query);
-        //修改查询参数
+        // 修改查询参数
         $result->uri = $result->uri->withQuery($query);
 
         return $result;
@@ -456,6 +456,57 @@ class ServerRequest extends Request implements ServerRequestInterface
 
         $this->allowParseBody = true;
         $this->bodyParsers[$subtype] = $parsers;
+    }
+
+    /**
+     * 检查请求方式
+     *
+     * @param $method
+     * @return bool
+     */
+    public function isMethod($method)
+    {
+        return $this->getMethod() === $method;
+    }
+
+    /**
+     * 查看是否是GET请求
+     *
+     * @return bool
+     */
+    public function isGet()
+    {
+        return $this->isMethod('GET');
+    }
+
+    /**
+     * 查看是否是POST请求
+     *
+     * @return bool
+     */
+    public function isPost()
+    {
+        return $this->isMethod('POST');
+    }
+
+    /**
+     * 查看是否是PUT请求
+     *
+     * @return bool
+     */
+    public function isPut()
+    {
+        return $this->isMethod('PUT');
+    }
+
+    /**
+     * 查看是否是DELETE请求
+     *
+     * @return bool
+     */
+    public function isDelete()
+    {
+        return $this->isMethod('DELETE');
     }
 
     /**

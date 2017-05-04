@@ -25,7 +25,7 @@ class ServerRequestTest extends \PHPUnit_Framework_TestCase
 
     public function testCreateRequestFromString()
     {
-        $requestString = file_get_contents(__DIR__."/fixtures/BodyIsForm.txt");
+        $requestString = file_get_contents(__DIR__ . "/fixtures/BodyIsForm.txt");
 
         $request = CliServerRequest::createFromString($requestString);
         $this->assertEquals($requestString, $request->__toString());

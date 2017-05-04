@@ -98,6 +98,35 @@ class Stream implements StreamInterface
     }
 
     /**
+     * @param $filename
+     * @param $mode
+     * @return static
+     */
+    public static function tryOpen($filename, $mode)
+    {
+        $e = null;
+        set_error_handler(function () use ($filename, $mode, &$e) {
+            $e = new \RuntimeException(sprintf(
+                'Unable to open %s using mode %s: %s',
+                $filename,
+                $mode,
+                func_get_args()[1]
+            ));
+        });
+
+        $stream = fopen($filename, $mode);
+
+        restore_error_handler();
+
+        if ($e) {
+            /** @var $e \RuntimeException */
+            throw $e;
+        }
+
+        return new static($stream);
+    }
+
+    /**
      * 获取请求内容
      */
     public static function createFromCgi()

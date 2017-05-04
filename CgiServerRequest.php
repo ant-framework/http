@@ -60,7 +60,7 @@ class CgiServerRequest extends ServerRequest
 
         $uri = Uri::createFromServerParams($serverParams);
 
-        $body = $body ?: Body::createFromCgi();
+        $body = $body ?: new LazyOpenStream("php://input", 'r');
 
         $protocol = isset($serverParams['SERVER_PROTOCOL'])
             ? str_replace('HTTP/', '', $serverParams['SERVER_PROTOCOL'])
@@ -86,7 +86,7 @@ class CgiServerRequest extends ServerRequest
     {
         $headers = [];
         foreach ($serverParams as $key => $value) {
-            //提取HTTP头
+            // 提取HTTP头
             if (isset(static::$special[$key]) || strpos($key, 'HTTP_') === 0) {
                 $key = strtolower(str_replace('_', '-', $key));
                 $key = (strpos($key, 'http-') === 0) ? substr($key, 5) : $key;
@@ -128,7 +128,7 @@ class CgiServerRequest extends ServerRequest
             $basePath = $requestScriptDir;
         }
 
-        if(isset($basePath)) {
+        if (isset($basePath)) {
             // 获取请求的路径
             $this->routePath = '/'.trim(substr($this->routePath, strlen($basePath)), '/');
         }

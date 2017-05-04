@@ -142,10 +142,10 @@ class Uri implements UriInterface
      */
     public function withScheme($scheme)
     {
-        $clone = clone $this;
-        $clone->scheme = $scheme;
+        $self = clone $this;
+        $self->scheme = $scheme;
 
-        return $clone;
+        return $self;
     }
 
     /**
@@ -181,11 +181,11 @@ class Uri implements UriInterface
      */
     public function withUserInfo($user, $password = null)
     {
-        $clone = clone $this;
-        $clone->user = $user;
-        $clone->pass = $password;
+        $self = clone $this;
+        $self->user = $user;
+        $self->pass = $password;
 
-        return $clone;
+        return $self;
     }
 
     /**
@@ -206,10 +206,10 @@ class Uri implements UriInterface
      */
     public function withHost($host)
     {
-        $clone = clone $this;
-        $clone->host = $host;
+        $self = clone $this;
+        $self->host = $host;
 
-        return $clone;
+        return $self;
     }
 
     /**
@@ -239,10 +239,10 @@ class Uri implements UriInterface
     public function withPort($port)
     {
         $port = $this->filterPort($port);
-        $clone = clone $this;
-        $clone->port = $port;
+        $self = clone $this;
+        $self->port = $port;
 
-        return $clone;
+        return $self;
     }
 
     /**
@@ -282,10 +282,10 @@ class Uri implements UriInterface
             throw new InvalidArgumentException('Uri path must be a string');
         }
 
-        $clone = clone $this;
-        $clone->path = $path;
+        $self = clone $this;
+        $self->path = $path;
 
-        return $clone;
+        return $self;
     }
 
     /**
@@ -315,10 +315,10 @@ class Uri implements UriInterface
             throw new InvalidArgumentException('Uri query must be a string');
         }
 
-        $clone = clone $this;
-        $clone->query = $query;
+        $self = clone $this;
+        $self->query = $query;
 
-        return $clone;
+        return $self;
     }
 
     /**
@@ -343,10 +343,10 @@ class Uri implements UriInterface
             throw new \InvalidArgumentException('Uri fragment must be a string');
         }
 
-        $clone = clone $this;
-        $clone->fragment = $fragment;
+        $self = clone $this;
+        $self->fragment = $fragment;
 
-        return $clone;
+        return $self;
     }
 
     /**
