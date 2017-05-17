@@ -200,7 +200,7 @@ class UploadedFile implements UploadedFileInterface
     }
 
     /**
-     * 检查是否为字符串或者为空
+     * 检查是否为字符串或者不为空
      *
      * @param mixed $param
      * @return boolean
