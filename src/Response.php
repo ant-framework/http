@@ -6,6 +6,7 @@ use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\ResponseInterface;
 
 /**
+ * Todo JsonResponse, XmlResponse, JsonpResponse
  * Todo 响应分块 dechex($len) . "\r\n" . $buffer . "\r\n";
  * Todo Cookie对象(包含加密,读取,设置响应Cookie)
  * Class Response

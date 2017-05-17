@@ -334,7 +334,9 @@ class Stream implements StreamInterface
         if (!$this->isReadable()) {
             throw new RuntimeException('Cannot read from non-readable stream');
         }
+
         if ($length < 0) {
+            // 读取长度不应该小于0
             throw new \RuntimeException('Length parameter cannot be negative');
         }
 
@@ -368,18 +370,18 @@ class Stream implements StreamInterface
      * @param $content $string
      * @return int
      */
-    public function write($content)
+    public function write($string)
     {
         if (
-            !is_null($content) &&
-            !is_string($content) &&
-            !is_numeric($content) &&
-            !method_exists($content,'__toString')
+            !is_null($string) &&
+            !is_string($string) &&
+            !is_numeric($string) &&
+            !method_exists($string,'__toString')
         ) {
             // 参数错误
             throw new InvalidArgumentException(sprintf(
                 'The Response content must be a string or object implementing __toString(), "%s" given.',
-                gettype($content)
+                gettype($string)
             ));
         }
 
@@ -388,11 +390,12 @@ class Stream implements StreamInterface
             throw new RuntimeException('Cannot write to a non-writable stream');
         }
 
-        // 清除之前的size记录
-        $this->size = null;
-
-        if (($written = fwrite($this->stream, (string)$content)) === false) {
+        if (($written = fwrite($this->stream, (string)$string)) === false) {
             throw new RuntimeException('Unable to write to stream');
+        }
+
+        if ($this->size) {
+            $this->size += $written;
         }
 
         return $written;

@@ -32,23 +32,6 @@ class ServerRequestTest extends \PHPUnit_Framework_TestCase
         $this->assertInstanceOf(ServerRequest::class, $request);
     }
 
-    public function testGetMethodAntWithMethod()
-    {
-        $request = $this->createRequest();
-
-        //=================== Http动词是否为GET ===================//
-
-        $this->assertEquals('GET', $request->getMethod());
-        $this->assertTrue($request->isGet());
-        $this->assertFalse($request->isPost());
-
-        //=================== 修改HTTP动词后与原来的区别 ===================//
-        $newRequest = $request->withMethod('POST');
-        $this->assertEquals('GET', $request->getMethod());
-        $this->assertEquals('POST', $newRequest->getMethod());
-        $this->assertNotEquals($newRequest, $request);
-    }
-
     public function testHeaderOverrideRequestMethod()
     {
         $requestString =
@@ -83,47 +66,6 @@ class ServerRequestTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals("DELETE", $request->getBodyParam('_method'));
     }
 
-    /**
-     * @expectedException \InvalidArgumentException
-     */
-    public function testRequestUri()
-    {
-        //================================== 测试Uri ==================================//
-        $request = $this->createRequest();
-        // 获取Uri
-        $this->assertEquals('/Test', $request->getUri()->getPath());
-        $this->assertEquals('/Test?key=value#hello', $request->getRequestTarget());
-        $this->assertEquals('http://www.example.com:80/Test?key=value#hello', (string)$request->getUri());
-        $this->assertEquals(['key' => 'value'], $request->getQueryparams());
-
-        //================================== 测试请求目标对GET参数与Uri的影响 ==================================//
-        // 修改请求目标不应该影响主机名
-        $newRequest = $request->withRequestTarget('http://test.com/Demo?name=alex&age=18');
-        $this->assertEquals('/Demo', $newRequest->getUri()->getPath());
-        $this->assertEquals('/Demo?name=alex&age=18', $newRequest->getRequestTarget());
-        $this->assertEquals('http://www.example.com:80/Demo?name=alex&age=18', (string)$newRequest->getUri());
-        $this->assertEquals(['name' => 'alex','age' => '18'], $newRequest->getQueryParams());
-        $this->assertEquals("www.example.com", $newRequest->getHeaderLine("Host"));
-
-        //================================== 测试GET参数对请求Uri的影响 ==================================//
-        // 修改Get参数
-        $newRequest = $request->withQueryParams(['foo' => 'bar']);
-        $this->assertEquals('/Test?foo=bar#hello', $newRequest->getRequestTarget());
-        $this->assertEquals(['foo' => 'bar'], $newRequest->getQueryParams());
-        $this->assertEquals('http://www.example.com:80/Test?foo=bar#hello', (string)$newRequest->getUri());
-
-        //================================== 测试Uri对请求目标的影响 ==================================//
-        // 修改Uri
-        $newRequest = $request->withUri(new Uri('http://www.domain.com/foobar?test_key=test_value'));
-        $this->assertEquals('/foobar?test_key=test_value', $newRequest->getRequestTarget());
-        $this->assertEquals('/foobar', $newRequest->getUri()->getPath());
-        $this->assertEquals(['test_key' => 'test_value'], $newRequest->getQueryParams());
-        $this->assertEquals('www.domain.com:80', $newRequest->getHeaderLine("Host"));
-
-        //================================== 测试输入非法参数 ==================================//
-        $request->withRequestTarget(['test']);
-    }
-
     public function testRequestCookie()
     {
         //================================== 查看请求Cookie ==================================//
@@ -151,7 +93,24 @@ class ServerRequestTest extends \PHPUnit_Framework_TestCase
         );
     }
 
-    // Todo 测试解析Body文件
+    public function testRequestQueryParams()
+    {
+        $request = $this->createRequest();
+        $this->assertEquals(['key' => 'value'], $request->getQueryParams());
+
+        // 修改Get参数
+        $newRequest = $request->withQueryParams(['foo' => 'bar']);
+        $this->assertEquals('/Test?foo=bar#hello', $newRequest->getRequestTarget());
+        $this->assertEquals(['foo' => 'bar'], $newRequest->getQueryParams());
+
+        // 修改请求目标
+        $newRequest = $request->withRequestTarget('/Demo?name=alex&age=18');
+        $this->assertEquals(['name' => 'alex','age' => '18'], $newRequest->getQueryParams());
+
+        // 修改Uri
+        $newRequest = $request->withUri(new Uri('http://www.domain.com/foobar?test_key=test_value'));
+        $this->assertEquals(['test_key' => 'test_value'], $newRequest->getQueryParams());
+    }
 
     /**
      * 当请求的Body类型为Json时的解析结果
@@ -230,7 +189,10 @@ class ServerRequestTest extends \PHPUnit_Framework_TestCase
             );
 
             $this->assertEquals('bar', $request->getBodyParam('foo'));
-            // Todo 文件
+
+            $file = $request->getUploadedFiles()['file-test'];
+
+            $this->assertInstanceOf(\Psr\Http\Message\UploadedFileInterface::class, $file);
         }
     }
 }

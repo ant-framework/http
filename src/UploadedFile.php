@@ -149,6 +149,8 @@ class UploadedFile implements UploadedFileInterface
     }
 
     /**
+     * 设置错误信息
+     *
      * @param int $error
      * @throws InvalidArgumentException
      */
@@ -170,6 +172,8 @@ class UploadedFile implements UploadedFileInterface
     }
 
     /**
+     * 设置文件大小
+     *
      * @param int $size
      * @throws InvalidArgumentException
      */
@@ -185,6 +189,8 @@ class UploadedFile implements UploadedFileInterface
     }
 
     /**
+     * 检查是否时字符串或者null
+     *
      * @param mixed $param
      * @return boolean
      */
@@ -194,6 +200,8 @@ class UploadedFile implements UploadedFileInterface
     }
 
     /**
+     * 检查是否为字符串或者为空
+     *
      * @param mixed $param
      * @return boolean
      */
@@ -203,6 +211,8 @@ class UploadedFile implements UploadedFileInterface
     }
 
     /**
+     * 设置上传文件的原名
+     *
      * @param string|null $clientFilename
      * @throws InvalidArgumentException
      */
@@ -218,6 +228,8 @@ class UploadedFile implements UploadedFileInterface
     }
 
     /**
+     * 设置文件类型
+     *
      * @param string|null $clientMediaType
      * @throws InvalidArgumentException
      */
@@ -233,6 +245,8 @@ class UploadedFile implements UploadedFileInterface
     }
 
     /**
+     * 是否错误
+     *
      * @return bool
      */
     public function isError()
@@ -241,6 +255,8 @@ class UploadedFile implements UploadedFileInterface
     }
 
     /**
+     * 是否移动
+     *
      * @return boolean
      */
     protected function isMoved()
@@ -249,6 +265,8 @@ class UploadedFile implements UploadedFileInterface
     }
 
     /**
+     * 验证是否可以活动
+     *
      * @throws RuntimeException if is moved or not ok
      */
     protected function validateActive()
@@ -270,11 +288,11 @@ class UploadedFile implements UploadedFileInterface
     {
         $this->validateActive();
 
-        if ($this->stream instanceof StreamInterface) {
-            return $this->stream;
+        if (!$this->stream instanceof StreamInterface) {
+            $this->stream = new Stream(fopen($this->file, "r+"));
         }
 
-        return new Stream(fopen($this->file, "r+"));
+        return $this->stream;
     }
 
     /**

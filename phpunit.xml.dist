@@ -12,13 +12,13 @@
         >
     <testsuites>
         <testsuite name="Http module test">
-            <directory>./Tests/</directory>
+            <directory>./src/Tests/</directory>
         </testsuite>
     </testsuites>
 
     <filter>
         <whitelist>
-            <directory>./</directory>
+            <directory>./src</directory>
         </whitelist>
     </filter>
 </phpunit>

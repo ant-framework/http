@@ -570,10 +570,10 @@ class ServerRequest extends Request implements ServerRequestInterface
 
         $data = [];
         $bodyBoundary = '--' . $match[1] . "\r\n";
-        // 将最后一行分界符剔除
+        // 将最后一行分界符剔除,最后一行用"--"标识结尾
         $body = substr(
             $input, 0,
-            $req->getBody()->getSize() - (strlen($bodyBoundary) + 4)
+            $req->getBody()->getSize() - (strlen($bodyBoundary) + 2)
         );
 
         foreach (explode($bodyBoundary, $body) as $buffer) {
