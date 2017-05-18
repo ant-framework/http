@@ -12,7 +12,7 @@
         >
     <testsuites>
         <testsuite name="Http module test">
-            <directory>./src/Tests/</directory>
+            <directory>./tests/</directory>
         </testsuite>
     </testsuites>
 
