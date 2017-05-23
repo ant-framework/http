@@ -61,20 +61,31 @@ abstract class Message implements MessageInterface
             throw new InvalidArgumentException('Invalid message');
         }
 
-        list($headerBuffer, $bodyBuffer) = explode("\r\n\r\n", $message, 2);
+        $lines = preg_split('/(\\r?\\n)/', $message, -1, PREG_SPLIT_DELIM_CAPTURE);
 
-        $headerLines = explode("\r\n", $headerBuffer);
-        $startLine = array_shift($headerLines);
-
+        $startLine = array_shift($lines);
         $headers = [];
-        foreach ($headerLines as $line) {
+        $body = '';
+
+        array_shift($lines);
+
+        // 每读取一行,跳过一次空行,如果连续两次空行,说明Header内容读取完毕
+        for ($i = 0, $totalLines = count($lines); $i < $totalLines; $i += 2) {
+            $line = $lines[$i];
+            if (empty($line)) {
+                // 去除末尾行后,总行数大于当前行数,说明余下的都是Body内容
+                if ($i < $totalLines - 1) {
+                    $body = implode("", array_slice($lines, $i + 2));
+                }
+                break;
+            }
             if (strpos($line, ':')) {
                 list($name, $value) = array_map("trim", explode(':', $line, 2));
                 $headers[$name][] = $value;
             }
         }
 
-        return [$startLine, $headers, $bodyBuffer];
+        return [$startLine, $headers, $body];
     }
 
     /**
@@ -235,7 +246,7 @@ abstract class Message implements MessageInterface
     public function getBody()
     {
         if (!$this->body) {
-            $this->body = Body::createFrom("");
+            $this->body = new Body();
         }
 
         return $this->body;

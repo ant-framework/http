@@ -76,7 +76,7 @@ class Response extends Message implements ResponseInterface
      *
      * @var array
      */
-    protected $httpReasonPhrase = [
+    protected static $httpReasonPhrase = [
         //1xx Informational 请求过程
         100 => 'Continue',
         101 => 'Switching Protocols',
@@ -145,27 +145,6 @@ class Response extends Message implements ResponseInterface
     ];
 
     /**
-     * http状态码
-     *
-     * @var int
-     */
-    protected $code;
-
-    /**
-     * http短语
-     *
-     * @var string
-     */
-    protected $responsePhrase = '';
-
-    /**
-     * 响应的cookie
-     *
-     * @var array
-     */
-    protected $cookieParams = [];
-
-    /**
      * cookie默认值
      *
      * @var array
@@ -188,6 +167,27 @@ class Response extends Message implements ResponseInterface
         // 除了发起Http请求外,Js是否可以使用cookie
         'httponly'  =>  false,
     ];
+
+    /**
+     * http状态码
+     *
+     * @var int
+     */
+    protected $code;
+
+    /**
+     * http短语
+     *
+     * @var string
+     */
+    protected $responsePhrase = '';
+
+    /**
+     * 响应的cookie
+     *
+     * @var array
+     */
+    protected $cookieParams = [];
 
     /**
      * 通过http报头跟body信息创建一个response对象
@@ -257,7 +257,7 @@ class Response extends Message implements ResponseInterface
     ) {
         $this->code = $code;
         $this->setHeaders($headers);
-        $this->body = $body ? : new Body();
+        $this->body = $body;
         $this->responsePhrase = $phrase;
         $this->protocolVersion = $protocol;
 
@@ -311,9 +311,9 @@ class Response extends Message implements ResponseInterface
      */
     public function getReasonPhrase()
     {
-        if (empty($this->responsePhrase)) {
-            $this->responsePhrase = isset($this->httpReasonPhrase[$this->code])
-                ? $this->httpReasonPhrase[$this->code]
+        if (!$this->responsePhrase) {
+            $this->responsePhrase = isset(static::$httpReasonPhrase[$this->code])
+                ? static::$httpReasonPhrase[$this->code]
                 : null;
         }
 
@@ -389,7 +389,7 @@ class Response extends Message implements ResponseInterface
      */
     public function isEmpty()
     {
-        return in_array($this->getStatusCode(),[204,205,304]);
+        return in_array($this->getStatusCode(), [204, 205, 304]);
     }
 
     /**
