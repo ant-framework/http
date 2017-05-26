@@ -67,14 +67,13 @@ abstract class Message implements MessageInterface
         $headers = [];
         $body = '';
 
-        array_shift($lines);
-
-        // 每读取一行,跳过一次空行,如果连续两次空行,说明Header内容读取完毕
-        for ($i = 0, $totalLines = count($lines); $i < $totalLines; $i += 2) {
+        // 跳过起始行的换行符,之后每读取一行,略过一个换行符
+        // 如果读到空行,说明该行多出来一行换行符,视为Header结束,开始读取body
+        for ($i = 1, $totalLines = count($lines); $i < $totalLines; $i += 2) {
             $line = $lines[$i];
             if (empty($line)) {
-                // 去除末尾行后,总行数大于当前行数,说明余下的都是Body内容
                 if ($i < $totalLines - 1) {
+                    // 将Body合并为字符串
                     $body = implode("", array_slice($lines, $i + 2));
                 }
                 break;
@@ -274,15 +273,15 @@ abstract class Message implements MessageInterface
      */
     public function headerToString()
     {
-        $headers = [];
+        $data = $this->getStartLine();
+
         foreach ($this->getHeaders() as $name => $value) {
             // 首字母大写,未来可能取消
             $name = implode('-', array_map('ucfirst', explode('-', $name)));
-            $headers[] = sprintf('%s: %s', $name, implode(',', $value));
+            $data .= sprintf("%s: %s\r\n", $name, implode(',', $value));
         }
 
-        $headerBuffer = $headers ? implode(PHP_EOL, $headers) . PHP_EOL : "";
-        return $this->getStartLine() . $headerBuffer;
+        return $data;
     }
 
     /**
@@ -326,25 +325,25 @@ abstract class Message implements MessageInterface
     }
 
     /**
+     * Todo 参考setIn实现
      * 保持数据不变性
      *
-     * @param $attribute string
+     * @param $path string|array
      * @param $value mixed
      * @return object
      */
-    protected function changeAttribute($attribute, $value)
+    protected function changeAttribute($path, $value)
     {
         $self = $this->immutability ? clone $this : $this;
 
-        if (is_array($attribute)) {
-            list($attribute, $key) = $attribute;
+        $path = is_array($path) ? $path : explode('.', $path);
+        $array = &$self->{array_shift($path)};
 
-            // 兼容7以下
-            $attribute = &$self->$attribute;
-            $attribute[$key] = $value;
-        } else {
-            $self->$attribute = $value;
+        foreach ($path as $key) {
+            $array = &$array[$key];
         }
+
+        $array = $value;
 
         return $self;
     }
