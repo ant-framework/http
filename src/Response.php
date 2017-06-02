@@ -6,8 +6,6 @@ use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\ResponseInterface;
 
 /**
- * Todo JsonResponse, XmlResponse, JsonpResponse
- * Todo 响应分块 dechex($len) . "\r\n" . $buffer . "\r\n";
  * Todo Cookie对象(包含加密,读取,设置响应Cookie)
  * Class Response
  * @package Ant\Http
@@ -273,7 +271,13 @@ class Response extends Message implements ResponseInterface
      */
     public function __toString()
     {
-        return $this->headerToString() . PHP_EOL . $this->getBody();
+        if (!$this->hasHeader("Content-Length") && !$this->hasHeader('Transfer-Encoding')) {
+            // 设置Body长度
+            $this->headers['content-length'] = [$this->getBody()->getSize()];
+        }
+
+        // body结束后换行
+        return $this->headerToString() . "\r\n" . $this->getBody() . "\r\n";
     }
 
     /**
@@ -477,7 +481,7 @@ class Response extends Message implements ResponseInterface
      */
     public function headerToString()
     {
-        return parent::headerToString() . $this->getCookieHeader();
+        return parent::headerToString() . $this->cookieToString();
     }
 
     /**
@@ -520,9 +524,9 @@ class Response extends Message implements ResponseInterface
     /**
      * @return string
      */
-    protected function getCookieHeader()
+    protected function cookieToString()
     {
-        $setCookies = [];
+        $cookies = '';
         // 获取所有cookie参数
         foreach ($this->getCookies() as $properties) {
             $cookie = [];
@@ -564,9 +568,9 @@ class Response extends Message implements ResponseInterface
                 $cookie[] = 'httponly';
             }
 
-            $setCookies[] = sprintf("Set-Cookie: %s", implode('; ',$cookie));
+            $cookies .= sprintf("Set-Cookie: %s", implode('; ',$cookie));
         }
 
-        return $setCookies ? implode(PHP_EOL, $setCookies) . PHP_EOL : '';
+        return $cookies;
     }
 }

@@ -218,21 +218,18 @@ abstract class Message implements MessageInterface
     }
 
     /**
-     * 通过迭代的方式添加响应头
-     *
-     * @param $iterator \Iterator|array
+     * @param $headers array
      * @return self
      */
-    public function addHeaderFromIterator($iterator)
+    public function withHeaders(array $headers = [])
     {
-        if (!$iterator instanceof \Iterator && !is_array($iterator)) {
-            throw new \RuntimeException('Arguments must be an iterator');
-        }
+        $self = $this->immutability ? clone $this : $this;
 
-        $self = $this;
-        foreach ($iterator as $name => $value) {
-            $self = $self->withAddedHeader($name, $value);
-        }
+        $headers = array_map(function ($header) {
+            return is_array($header) ? $header : [$header];
+        }, $headers);
+
+        $self->headers = array_merge($self->headers, $headers);
 
         return $self;
     }
