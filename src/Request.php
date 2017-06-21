@@ -2,6 +2,7 @@
 namespace Ant\Http;
 
 use InvalidArgumentException;
+use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UriInterface;
 use Psr\Http\Message\RequestInterface;
 
@@ -46,18 +47,19 @@ class Request extends Message implements RequestInterface
             $uri = new Uri($uri);
         }
 
+        if ($body != "" && $body !== null) {
+            $body = Stream::createFrom($body);
+        }
+
         $this->method = $method;
         $this->uri = $uri;
         $this->setHeaders($headers);
         $this->protocolVersion = $protocolVersion;
+        $this->body = $body;
 
         // 如果没设置Host,尝试通过Uri获取
         if (!$this->hasHeader("host")) {
             $this->updateHostFromUri();
-        }
-
-        if ($body != "" && $body !== null) {
-            $this->body = Stream::createFrom($body);
         }
     }
 

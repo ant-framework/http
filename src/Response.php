@@ -2,6 +2,7 @@
 namespace Ant\Http;
 
 use InvalidArgumentException;
+use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\ResponseInterface;
 
@@ -217,7 +218,7 @@ class Response extends Message implements ResponseInterface
         return new static(
             $statusCode,
             $headers,
-            Body::createFrom($bodyBuffer),
+            $bodyBuffer,
             $responsePhrase,
             $protocol
         );
@@ -249,15 +250,19 @@ class Response extends Message implements ResponseInterface
     public function __construct(
         $code = 200,
         $headers = [],
-        StreamInterface $body = null,
+        $body = null,
         $phrase = '',
         $protocol = '1.1'
     ) {
+        if ($body != "" && $body !== null) {
+            $body = Stream::createFrom($body);
+        }
+
         $this->code = $code;
         $this->setHeaders($headers);
-        $this->body = $body;
         $this->responsePhrase = $phrase;
         $this->protocolVersion = $protocol;
+        $this->body = $body;
 
         if ($this->hasHeader('set-cookie')) {
             // Cookie与Header分开处理

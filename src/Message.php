@@ -241,7 +241,7 @@ abstract class Message implements MessageInterface
      */
     public function getBody()
     {
-        if (!$this->body) {
+        if (!$this->body instanceof StreamInterface) {
             $this->body = new Body();
         }
 

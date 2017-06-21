@@ -4,12 +4,18 @@ namespace Test;
 use Ant\Http\Response;
 use Ant\Http\Stream;
 
+/**
+ * Todo 重构Response测试
+ *
+ * Class ResponseTest
+ * @package Test
+ */
 class ResponseTest extends \PHPUnit_Framework_TestCase
 {
     public function testResponse()
     {
         $response = new Response();
-        $this->assertEquals("HTTP/1.1 200 OK\r\n\r\n",$response->__toString());
+        $this->assertInstanceOf(\Psr\Http\Message\ResponseInterface::class, $response);
     }
 
     public function testHttpStatusCode()
@@ -25,20 +31,18 @@ class ResponseTest extends \PHPUnit_Framework_TestCase
 
     public function testCreateFromResponseString()
     {
-        $responseString = <<<EOT
-HTTP/1.1 200 OK
-Server: Ant-Framework
-Content-Type: text/html;charset=utf-8
-Connection: keep-alive
-Cache-Control: private
-Expires: Fri, 23 Dec 2016 17:45:55 GMT
-Content-Encoding: gzip
-Set-Cookie: test=demo; path=/demo
-Set-Cookie: foo=bar; expires=Fri, 23-Dec-16 17:46:00 GMT; domain=www.foobar.com; path=/test
+        $buffer =
+            "HTTP/1.1 200 OK\r\n".
+            "Server: Ant-Framework\r\n".
+            "Content-Type: text/html;charset=utf-8\r\n".
+            "Connection: keep-alive\r\n".
+            "Cache-Control: private\r\n".
+            "Expires: Fri, 23 Dec 2016 17:45:55 GMT\r\n".
+            "Content-Encoding: gzip\r\n".
+            "Set-Cookie: test=demo; path=/demo\r\n".
+            "Set-Cookie: foo=bar; expires=Fri, 23-Dec-16 17:46:00 GMT; domain=www.foobar.com; path=/test\r\n\r\n";
 
-
-EOT;
-        $response = Response::createFromResponseStr($responseString);
+        $response = Response::createFromResponseStr($buffer);
         $this->assertEquals(200,$response->getStatusCode());
         $this->assertEquals('OK',$response->getReasonPhrase());
         $this->assertEquals('1.1',$response->getProtocolVersion());

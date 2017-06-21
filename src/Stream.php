@@ -47,9 +47,9 @@ class Stream implements StreamInterface
     protected $metadata = [];
 
     /**
-     * @var int|null 流的大小
+     * @var int 流的大小
      */
-    protected $size = null;
+    protected $size = 0;
 
     /**
      * 可用读写模式
@@ -220,7 +220,7 @@ class Stream implements StreamInterface
             return null;
         }
 
-        if (is_null($this->size)) {
+        if (!$this->size) {
             $stat = fstat($this->stream);
 
             $this->size = isset($stat['size']) ? $stat['size'] : null;
