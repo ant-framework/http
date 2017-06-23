@@ -66,7 +66,7 @@ class CgiServerRequest extends ServerRequest
             ? str_replace('HTTP/', '', $serverParams['SERVER_PROTOCOL'])
             : '1.1';
 
-        $serverRequest = new CgiServerRequest($method, $uri, $headers, $body, $protocol, $serverParams);
+        $serverRequest = new static($method, $uri, $headers, $body, $protocol, $serverParams);
 
         $serverRequest->cookieParams = $cookieParams ?: $_COOKIE;
         $serverRequest->queryParams = $queryParams ?: $_GET;

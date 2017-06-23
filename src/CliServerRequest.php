@@ -24,7 +24,7 @@ class CliServerRequest extends ServerRequest
         // ªÒ»°Uri
         $uri = static::createUri($requestTarget, $headers);
 
-        return new CliServerRequest($method, $uri, $headers, $body, $protocolVersion, $serverParams);
+        return new static($method, $uri, $headers, $body, $protocolVersion, $serverParams);
     }
 
     /**

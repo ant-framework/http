@@ -339,6 +339,7 @@ class Response extends Message implements ResponseInterface
      * @param $name
      * @param $value
      * @param array $options
+     * @return self
      */
     public function setCookie($name, $value, array $options = [])
     {
@@ -348,6 +349,22 @@ class Response extends Message implements ResponseInterface
 
         // 保存cookie
         $this->cookieParams[$key] = $options;
+
+        return $this;
+    }
+
+    /**
+     * @param array $cookies
+     * @param array $options
+     * @return $this
+     */
+    public function setCookies(array $cookies, array $options = [])
+    {
+        foreach ($cookies as $key => $val) {
+            $this->setCookie($key, $val, $options);
+        }
+
+        return $this;
     }
 
     /**
@@ -573,7 +590,7 @@ class Response extends Message implements ResponseInterface
                 $cookie[] = 'httponly';
             }
 
-            $cookies .= sprintf("Set-Cookie: %s", implode('; ',$cookie));
+            $cookies .= sprintf("Set-Cookie: %s\r\n", implode('; ',$cookie));
         }
 
         return $cookies;
