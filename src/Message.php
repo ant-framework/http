@@ -225,9 +225,11 @@ abstract class Message implements MessageInterface
     {
         $self = $this->immutability ? clone $this : $this;
 
-        $headers = array_map(function ($header) {
-            return is_array($header) ? $header : [$header];
-        }, $headers);
+        foreach ($headers as $key => $val) {
+            unset($headers[$key]);
+
+            $headers[strtolower($key)] = is_array($val) ? $val : [$val];
+        }
 
         $self->headers = array_merge($self->headers, $headers);
 
