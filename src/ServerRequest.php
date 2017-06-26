@@ -64,7 +64,7 @@ class ServerRequest extends Request implements ServerRequestInterface
     protected $allowParseBody = true;
 
     /**
-     * body 解析器 根据subtype进行调用
+     * body 解析器
      *
      * @var array
      */
@@ -105,14 +105,14 @@ class ServerRequest extends Request implements ServerRequestInterface
     /**
      * @return string
      */
-    public function __toString()
+    public function headerToString()
     {
         if ($cookie = $this->getCookieParams()) {
             // 设置Cookie
             $this->headers['cookie'] = [str_replace('&', '; ', http_build_query($this->getCookieParams()))];
         }
 
-        return parent::__toString();
+        return parent::headerToString();
     }
 
     /**

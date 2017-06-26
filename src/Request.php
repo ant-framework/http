@@ -71,12 +71,7 @@ class Request extends Message implements RequestInterface
      */
     public function __toString()
     {
-        if ($this->getMethod() !== "GET" && !$this->hasHeader("Content-Length")) {
-            // 设置Body长度
-            $this->headers['content-length'] = [$this->getBody()->getSize()];
-        }
-
-        return $this->headerToString() . PHP_EOL . $this->getBody();
+        return $this->headerToString() . "\r\n" . $this->body;
     }
 
     /**
@@ -178,13 +173,26 @@ class Request extends Message implements RequestInterface
 
     /**
      * 检查是否是异步请求
-     * 注意 : 主流JS框架发起AJAX都有此参数,如果是原生AJAX需要手动添加到http头
+     * 需要js在发起Http请求时,在header中标识 X-Request-With: xmlhttprequest
      *
      * @return bool
      */
     public function isAjax()
     {
         return strtolower($this->getHeaderLine('x-requested-with')) === 'xmlhttprequest';
+    }
+
+    /**
+     * @return string
+     */
+    public function headerToString()
+    {
+        if ($this->getMethod() !== "GET" && !$this->hasHeader("Content-Length")) {
+            // 设置Body长度
+            $this->headers['content-length'] = [$this->getBody()->getSize()];
+        }
+
+        return parent::headerToString();
     }
 
     /**

@@ -276,13 +276,8 @@ class Response extends Message implements ResponseInterface
      */
     public function __toString()
     {
-        if (!$this->hasHeader("Content-Length") && !$this->hasHeader('Transfer-Encoding')) {
-            // 设置Body长度
-            $this->headers['content-length'] = [$this->getBody()->getSize()];
-        }
-
         // body结束后换行
-        return $this->headerToString() . "\r\n" . $this->getBody() . "\r\n";
+        return $this->headerToString() . "\r\n" . $this->body . "\r\n";
     }
 
     /**
@@ -503,6 +498,11 @@ class Response extends Message implements ResponseInterface
      */
     public function headerToString()
     {
+        if (!$this->hasHeader("Content-Length") && !$this->hasHeader('Transfer-Encoding')) {
+            // 设置Body长度
+            $this->headers['content-length'] = $this->body ? [$this->body->getSize()] : [0];
+        }
+
         return parent::headerToString() . $this->cookieToString();
     }
 

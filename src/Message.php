@@ -31,7 +31,7 @@ abstract class Message implements MessageInterface
     /**
      * body信息
      *
-     * @var StreamInterface
+     * @var StreamInterface|null
      */
     protected $body = null;
 
@@ -270,15 +270,15 @@ abstract class Message implements MessageInterface
      */
     public function headerToString()
     {
-        $data = $this->getStartLine();
+        $headers = $this->getStartLine();
 
-        foreach ($this->getHeaders() as $name => $value) {
+        foreach ($this->getHeaders() as $name => $val) {
             // 首字母大写,未来可能取消
             $name = implode('-', array_map('ucfirst', explode('-', $name)));
-            $data .= sprintf("%s: %s\r\n", $name, implode(',', $value));
+            $headers .= sprintf("%s: %s\r\n", $name, implode(',', $val));
         }
 
-        return $data;
+        return $headers;
     }
 
     /**
@@ -322,7 +322,6 @@ abstract class Message implements MessageInterface
     }
 
     /**
-     * Todo 参考setIn实现
      * 保持数据不变性
      *
      * @param $path string|array
@@ -334,13 +333,13 @@ abstract class Message implements MessageInterface
         $self = $this->immutability ? clone $this : $this;
 
         $path = is_array($path) ? $path : explode('.', $path);
-        $array = &$self->{array_shift($path)};
+        $attr = &$self->{array_shift($path)};
 
         foreach ($path as $key) {
-            $array = &$array[$key];
+            $attr = &$attr[$key];
         }
 
-        $array = $value;
+        $attr = $value;
 
         return $self;
     }
