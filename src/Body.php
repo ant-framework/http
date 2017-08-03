@@ -13,7 +13,7 @@ class Body extends Stream
     public function __construct($stream = null)
     {
         if (is_null($stream)) {
-            $stream = fopen('php://temp', 'w+');
+            $stream = fopen("php://memory", 'w+');
         }
 
         parent::__construct($stream);

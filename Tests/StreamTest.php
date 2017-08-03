@@ -10,12 +10,12 @@ class StreamTest extends \PHPUnit_Framework_TestCase
      */
     public function testReadAndWriteMode()
     {
-        //==================== temp流必然支持读 ======================//
-        $stream = new Stream(fopen('php://temp','r+'));
+        //==================== memory流必然支持读 ======================//
+        $stream = new Stream(fopen('php://memory','r+'));
         $this->assertTrue($stream->isWritable());
         $this->assertTrue($stream->isReadable());
 
-        $stream = new Stream(fopen('php://temp','r'));
+        $stream = new Stream(fopen('php://memory','r'));
         $this->assertTrue($stream->isReadable());
         $this->assertFalse($stream->isWritable());
 

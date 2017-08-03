@@ -276,8 +276,8 @@ class Response extends Message implements ResponseInterface
      */
     public function __toString()
     {
-        // body结束后换行
-        return $this->headerToString() . "\r\n" . $this->body . "\r\n";
+        // 如果在Body结束后添加换行符,客户端则不会保持长链接,原因不明
+        return $this->headerToString() . "\r\n" . $this->body;
     }
 
     /**

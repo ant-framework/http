@@ -84,7 +84,7 @@ class Stream implements StreamInterface
         }
 
         if (is_scalar($resource) || is_null($resource)) {
-            $stream = fopen('php://temp', 'r+');
+            $stream = fopen('php://memory', 'r+');
 
             if ($resource != '') {
                 fwrite($stream, (string) $resource);
