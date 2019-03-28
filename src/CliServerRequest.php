@@ -8,8 +8,6 @@ namespace Ant\Http;
 class CliServerRequest extends ServerRequest
 {
     /**
-     * 通过Tcp输入流解析Http请求
-     *
      * @param $receiveBuffer
      * @param array $serverParams
      * @return ServerRequest
@@ -17,11 +15,8 @@ class CliServerRequest extends ServerRequest
     public static function createFromString($receiveBuffer, array $serverParams = [])
     {
         list($startLine, $headers, $body) = static::parseMessage($receiveBuffer);
-        // 解析起始行
         list($method, $requestTarget, $protocol) = explode(' ', $startLine, 3);
-        // 获取Http协议版本
         $protocolVersion = str_replace('HTTP/', '', $protocol);
-        // 获取Uri
         $uri = static::createUri($requestTarget, $headers);
 
         return new static($method, $uri, $headers, $body, $protocolVersion, $serverParams);
@@ -65,7 +60,7 @@ class CliServerRequest extends ServerRequest
         array $serverParams = []
     ) {
         parent::__construct($method, $uri, $headers, $body, $protocolVersion, $serverParams);
-        // 解析Get与Cookie参数
+
         parse_str($this->uri->getQuery(), $this->queryParams);
 
         if ($this->hasHeader("Cookie")) {
